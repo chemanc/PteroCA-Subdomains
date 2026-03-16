@@ -1,0 +1,130 @@
+{% block main %}
+    <div class="tab-pane" id="subdomain">
+        <div class="row pt-3">
+            <div class="col-12">
+                <div id="subdomain-tab-content">
+                    <div class="text-center py-5">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p class="mt-2 text-muted">{{ 'client.loading'|trans({}, 'plugin_subdomains') }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function() {
+        var container = document.getElementById('subdomain-tab-content');
+        var serverId = {{ server.id }};
+        var loaded = false;
+
+        function loadSubdomainTab() {
+            if (loaded) return;
+            loaded = true;
+
+            fetch('/plugins/subdomains/servers/' + serverId + '/subdomain', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            })
+            .then(function(response) {
+                if (!response.ok) throw new Error('Failed to load');
+                return response.text();
+            })
+            .then(function(html) {
+                container.innerHTML = html;
+                initSubdomainScripts();
+            })
+            .catch(function(err) {
+                container.innerHTML = '<div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> Failed to load subdomain manager. <a href="/plugins/subdomains/servers/' + serverId + '/subdomain" class="alert-link">Open in new page</a></div>';
+            });
+        }
+
+        // Load when tab becomes visible
+        var tabLink = document.querySelector('[data-tab-id="subdomain"]');
+        if (tabLink) {
+            tabLink.addEventListener('click', function() {
+                setTimeout(loadSubdomainTab, 100);
+            });
+        }
+
+        // Also check if tab is already active (direct URL)
+        var tabPane = document.getElementById('subdomain');
+        if (tabPane && tabPane.classList.contains('active')) {
+            loadSubdomainTab();
+        }
+
+        // Fallback: load after short delay if hash matches
+        if (window.location.hash === '#subdomain') {
+            setTimeout(loadSubdomainTab, 300);
+        }
+
+        function initSubdomainScripts() {
+            // Initialize availability checker
+            var checkUrl = '/plugins/subdomains/api/check-availability';
+            var inputs = container.querySelectorAll('[data-subdomain-input]');
+            inputs.forEach(function(input) {
+                var timer;
+                var resultEl = input.parentElement.querySelector('[data-availability-result]');
+                var domainSelect = input.closest('form').querySelector('[data-domain-select]');
+                var previewEl = input.closest('form').querySelector('[data-preview]');
+                var previewAddr = input.closest('form').querySelector('[data-preview-address]');
+
+                input.addEventListener('input', function() {
+                    clearTimeout(timer);
+                    var val = input.value.trim().toLowerCase();
+
+                    // Update preview
+                    if (previewEl && previewAddr && domainSelect) {
+                        if (val.length > 0) {
+                            previewEl.style.display = '';
+                            previewAddr.textContent = val + domainSelect.options[domainSelect.selectedIndex].text;
+                        } else {
+                            previewEl.style.display = 'none';
+                        }
+                    }
+
+                    if (val.length < 3) {
+                        if (resultEl) resultEl.innerHTML = '';
+                        return;
+                    }
+
+                    timer = setTimeout(function() {
+                        var domainId = domainSelect ? domainSelect.value : '';
+                        var formData = new FormData();
+                        formData.append('subdomain', val);
+                        formData.append('domain_id', domainId);
+
+                        fetch(checkUrl, { method: 'POST', body: formData })
+                        .then(function(r) { return r.json(); })
+                        .then(function(data) {
+                            if (resultEl) {
+                                resultEl.innerHTML = data.available
+                                    ? '<span class="text-success"><i class="fas fa-check-circle"></i> ' + data.message + '</span>'
+                                    : '<span class="text-danger"><i class="fas fa-times-circle"></i> ' + data.message + '</span>';
+                            }
+                        });
+                    }, 500);
+                });
+
+                if (domainSelect) {
+                    domainSelect.addEventListener('change', function() {
+                        input.dispatchEvent(new Event('input'));
+                    });
+                }
+            });
+
+            // Copy to clipboard
+            var copyBtn = container.querySelector('[data-copy-address]');
+            if (copyBtn) {
+                copyBtn.addEventListener('click', function() {
+                    var addr = copyBtn.getAttribute('data-copy-address');
+                    navigator.clipboard.writeText(addr).then(function() {
+                        var original = copyBtn.innerHTML;
+                        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
+                        setTimeout(function() { copyBtn.innerHTML = original; }, 2000);
+                    });
+                });
+            }
+        }
+    })();
+    </script>
+{% endblock %}

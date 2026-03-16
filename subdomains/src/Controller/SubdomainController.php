@@ -42,7 +42,7 @@ class SubdomainController extends AbstractController
     // =========================================================================
 
     #[Route('/servers/{serverId}/subdomain', name: 'show', methods: ['GET'])]
-    public function show(int $serverId, PluginSettingService $settings): Response
+    public function show(int $serverId, Request $request, PluginSettingService $settings): Response
     {
         $server = $this->getAuthorizedServer($serverId);
 
@@ -53,14 +53,21 @@ class SubdomainController extends AbstractController
         $cooldownHours = (int) $settings->get('subdomains', 'change_cooldown_hours', 24);
         $cooldownRemaining = $subdomain?->getCooldownRemaining($cooldownHours);
 
-        return $this->render('@PluginSubdomains/client/manage.html.twig', [
+        $templateData = [
             'server' => $server,
             'subdomain' => $subdomain,
             'domains' => $domains,
             'cooldownRemaining' => $cooldownRemaining,
             'minLength' => (int) $settings->get('subdomains', 'min_length', 3),
             'maxLength' => (int) $settings->get('subdomains', 'max_length', 32),
-        ]);
+        ];
+
+        // If AJAX request, return partial HTML (for tab embed)
+        if ($request->isXmlHttpRequest()) {
+            return $this->render('@PluginSubdomains/client/manage_partial.html.twig', $templateData);
+        }
+
+        return $this->render('@PluginSubdomains/client/manage.html.twig', $templateData);
     }
 
     // =========================================================================

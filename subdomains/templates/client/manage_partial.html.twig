@@ -1,0 +1,161 @@
+{# Partial template rendered inside the server tab via AJAX #}
+
+{# Flash Messages #}
+{% for type, messages in app.flashes %}
+    {% for message in messages %}
+        <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show">
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    {% endfor %}
+{% endfor %}
+
+{% if subdomain %}
+    {# HAS SUBDOMAIN #}
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="fas fa-globe"></i> {{ 'client.your_subdomain'|trans({}, 'plugin_subdomains') }}</h5>
+            {% if subdomain.status == 'active' %}
+                <span class="badge bg-success">{{ 'status.active'|trans({}, 'plugin_subdomains') }}</span>
+            {% elseif subdomain.status == 'pending' %}
+                <span class="badge bg-warning text-dark">{{ 'status.pending'|trans({}, 'plugin_subdomains') }}</span>
+            {% elseif subdomain.status == 'suspended' %}
+                <span class="badge bg-secondary">{{ 'status.suspended'|trans({}, 'plugin_subdomains') }}</span>
+            {% elseif subdomain.status == 'error' %}
+                <span class="badge bg-danger">{{ 'status.error'|trans({}, 'plugin_subdomains') }}</span>
+            {% endif %}
+        </div>
+        <div class="card-body">
+
+            {% if subdomain.status == 'error' and subdomain.errorMessage %}
+                <div class="alert alert-danger"><i class="fas fa-exclamation-triangle"></i> {{ subdomain.errorMessage }}</div>
+            {% endif %}
+
+            {% if subdomain.status == 'pending' %}
+                <div class="alert alert-info"><i class="fas fa-spinner fa-spin"></i> {{ 'client.dns_propagating'|trans({}, 'plugin_subdomains') }}</div>
+            {% endif %}
+
+            {% if subdomain.status == 'active' %}
+                <div class="rounded p-4 mb-4 text-center" style="background: var(--sidebar-bg, #2a2d35);">
+                    <small class="text-muted d-block mb-1">{{ 'client.minecraft_connect'|trans({}, 'plugin_subdomains') }}</small>
+                    <h3 class="mb-2 font-monospace">{{ subdomain.fullAddress }}</h3>
+                    <button type="button" class="btn btn-outline-info btn-sm"
+                            data-copy-address="{{ subdomain.fullAddress }}">
+                        <i class="fas fa-copy"></i> {{ 'client.copy_address'|trans({}, 'plugin_subdomains') }}
+                    </button>
+                    <small class="d-block mt-2 text-success">
+                        <i class="fas fa-info-circle"></i> {{ 'client.minecraft_port_note'|trans({}, 'plugin_subdomains') }}
+                    </small>
+                </div>
+            {% endif %}
+
+            <div class="row mb-4">
+                <div class="col-md-4"><strong class="text-muted">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}:</strong><br><code class="text-info">{{ subdomain.subdomain }}</code></div>
+                <div class="col-md-4"><strong class="text-muted">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}:</strong><br>{{ subdomain.domain.domain }}</div>
+                <div class="col-md-4"><strong class="text-muted">{{ 'general.created'|trans({}, 'plugin_subdomains') }}:</strong><br>{{ subdomain.createdAt|date('Y-m-d H:i') }}</div>
+            </div>
+
+            <hr>
+
+            <div class="d-flex gap-2">
+                {% if cooldownRemaining %}
+                    <button class="btn btn-outline-warning" disabled>
+                        <i class="fas fa-clock"></i> {{ 'client.change_subdomain'|trans({}, 'plugin_subdomains') }} ({{ cooldownRemaining }})
+                    </button>
+                {% else %}
+                    <button class="btn btn-outline-warning" data-bs-toggle="collapse" data-bs-target="#changeForm">
+                        <i class="fas fa-edit"></i> {{ 'client.change_subdomain'|trans({}, 'plugin_subdomains') }}
+                    </button>
+                {% endif %}
+
+                <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/delete" method="POST"
+                      onsubmit="return confirm('{{ 'client.confirm_delete_text'|trans({}, 'plugin_subdomains') }}')">
+                    <button type="submit" class="btn btn-outline-danger">
+                        <i class="fas fa-trash"></i> {{ 'client.delete_subdomain'|trans({}, 'plugin_subdomains') }}
+                    </button>
+                </form>
+            </div>
+
+            {% if not cooldownRemaining %}
+            <div class="collapse mt-3" id="changeForm">
+                <div class="card card-body">
+                    <p class="text-warning small mb-3"><i class="fas fa-exclamation-triangle"></i> {{ 'client.confirm_change_text'|trans({}, 'plugin_subdomains') }}</p>
+                    <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/update" method="POST">
+                        <div class="row align-items-end">
+                            <div class="col-md-5 mb-2">
+                                <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
+                                <input type="text" class="form-control" name="subdomain"
+                                       data-subdomain-input
+                                       placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
+                                       minlength="{{ minLength }}" maxlength="{{ maxLength }}" required>
+                                <div data-availability-result class="small mt-1"></div>
+                            </div>
+                            <div class="col-md-4 mb-2">
+                                <label class="form-label">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</label>
+                                <select class="form-select" name="domain_id" data-domain-select>
+                                    {% for d in domains %}
+                                        <option value="{{ d.id }}" {{ d.id == subdomain.domain.id ? 'selected' : '' }}>.{{ d.domain }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-3 mb-2">
+                                <button type="submit" class="btn btn-warning w-100"><i class="fas fa-save"></i> {{ 'general.update'|trans({}, 'plugin_subdomains') }}</button>
+                            </div>
+                        </div>
+                        <div data-preview class="small text-muted mt-2" style="display:none;">
+                            {{ 'client.subdomain_preview'|trans({}, 'plugin_subdomains') }} <strong data-preview-address></strong>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+{% else %}
+    {# NO SUBDOMAIN — Create form #}
+    <div class="card border-0 shadow-sm rounded-3">
+        <div class="card-header">
+            <h5 class="mb-0"><i class="fas fa-globe"></i> {{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}</h5>
+        </div>
+        <div class="card-body">
+            {% if domains is empty %}
+                <div class="alert alert-warning"><i class="fas fa-exclamation-triangle"></i> {{ 'client.domain_not_configured'|trans({}, 'plugin_subdomains') }}</div>
+            {% else %}
+                <p class="text-muted mb-4">{{ 'client.no_subdomain_hint'|trans({}, 'plugin_subdomains') }}</p>
+                <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain" method="POST">
+                    <div class="row align-items-end">
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
+                            <input type="text" class="form-control" name="subdomain"
+                                   data-subdomain-input
+                                   placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
+                                   minlength="{{ minLength }}" maxlength="{{ maxLength }}" required autocomplete="off">
+                            <div data-availability-result class="small mt-1"></div>
+                            <small class="form-text text-muted">{{ 'client.help_subdomain_format'|trans({}, 'plugin_subdomains') }}</small>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</label>
+                            <select class="form-select" name="domain_id" data-domain-select>
+                                {% for d in domains %}
+                                    <option value="{{ d.id }}" {{ d.isDefault ? 'selected' : '' }}>.{{ d.domain }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus"></i> {{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}</button>
+                        </div>
+                    </div>
+                    <div data-preview class="rounded p-3 mt-2" style="display:none; background: var(--sidebar-bg, #2a2d35);">
+                        <small class="text-muted">{{ 'client.subdomain_preview'|trans({}, 'plugin_subdomains') }}</small>
+                        <h5 class="mb-0 font-monospace" data-preview-address></h5>
+                    </div>
+                </form>
+                <div class="mt-3">
+                    <small class="text-muted"><i class="fas fa-info-circle"></i> {{ 'client.help_dns_propagation'|trans({}, 'plugin_subdomains') }}</small><br>
+                    <small class="text-muted"><i class="fas fa-info-circle"></i> {{ 'client.help_srv_record'|trans({}, 'plugin_subdomains') }}</small>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+{% endif %}

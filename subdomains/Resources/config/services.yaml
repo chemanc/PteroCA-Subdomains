@@ -47,3 +47,8 @@ services:
 
     Plugins\Subdomains\EventSubscriber\ServerEventSubscriber:
         public: true
+
+    # Server Tab (adds "Subdomain" tab to server management page)
+    Plugins\Subdomains\Tab\SubdomainTab:
+        tags: ['server.tab']
+        public: true
