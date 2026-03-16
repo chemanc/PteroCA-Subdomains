@@ -4,13 +4,13 @@ declare(strict_types=1);
 
 namespace Plugins\Subdomains\Controller;
 
+use App\Core\Entity\Server;
 use App\Core\Service\Plugin\PluginSettingService;
+use App\Core\Service\Pterodactyl\PterodactylApplicationService;
 use Doctrine\ORM\EntityManagerInterface;
 use Plugins\Subdomains\Entity\Subdomain;
 use Plugins\Subdomains\Entity\SubdomainDomain;
 use Plugins\Subdomains\Entity\SubdomainLog;
-use Plugins\Subdomains\Entity\Repository\SubdomainBlacklistRepository;
-use Plugins\Subdomains\Entity\Repository\SubdomainRepository;
 use Plugins\Subdomains\Exception\CloudflareException;
 use Plugins\Subdomains\Service\CloudflareService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
@@ -25,16 +25,19 @@ use Symfony\Component\Routing\Attribute\Route;
 #[Route(name: 'plugin_subdomains_')]
 class SubdomainController extends AbstractController
 {
-    public static function getSubscribedServices(): array
-    {
-        return array_merge(parent::getSubscribedServices(), [
-            'doctrine.orm.entity_manager' => '?' . EntityManagerInterface::class,
-        ]);
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly PterodactylApplicationService $pterodactylService,
+    ) {
     }
 
-    private function em(): EntityManagerInterface
+    /**
+     * Redirect back to the server page's subdomain tab.
+     */
+    private function redirectToServerTab(object $server): Response
     {
-        return $this->container->get('doctrine.orm.entity_manager');
+        $identifier = $server->getPterodactylServerIdentifier();
+        return $this->redirect("/panel?routeName=server&id={$identifier}#subdomain");
     }
 
     // =========================================================================
@@ -46,9 +49,8 @@ class SubdomainController extends AbstractController
     {
         $server = $this->getAuthorizedServer($serverId);
 
-        $em = $this->em();
-        $subdomain = $em->getRepository(Subdomain::class)->findByServer($serverId);
-        $domains = $em->getRepository(SubdomainDomain::class)->findActive();
+        $subdomain = $this->entityManager->getRepository(Subdomain::class)->findByServer($serverId);
+        $domains = $this->entityManager->getRepository(SubdomainDomain::class)->findActive();
 
         $cooldownHours = (int) $settings->get('subdomains', 'change_cooldown_hours', 24);
         $cooldownRemaining = $subdomain?->getCooldownRemaining($cooldownHours);
@@ -78,12 +80,11 @@ class SubdomainController extends AbstractController
     public function store(int $serverId, Request $request, CloudflareService $cloudflare, PluginSettingService $settings): Response
     {
         $server = $this->getAuthorizedServer($serverId);
-        $em = $this->em();
 
         // Check server doesn't already have a subdomain
-        if ($em->getRepository(Subdomain::class)->findByServer($serverId)) {
+        if ($this->entityManager->getRepository(Subdomain::class)->findByServer($serverId)) {
             $this->addFlash('error', 'This server already has a subdomain.');
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
         $subdomainName = strtolower(trim($request->request->get('subdomain', '')));
@@ -93,19 +94,18 @@ class SubdomainController extends AbstractController
         $error = $this->validateSubdomain($subdomainName, $domainId, $settings);
         if ($error) {
             $this->addFlash('error', $error);
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
-        $domain = $em->getRepository(SubdomainDomain::class)->find($domainId);
+        $domain = $this->entityManager->getRepository(SubdomainDomain::class)->find($domainId);
         if (!$domain || !$domain->isActive()) {
             $this->addFlash('error', 'Invalid domain selected.');
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
         // Create DNS records
         try {
-            $serverIp = $this->getServerIp($server);
-            $serverPort = $this->getServerPort($server);
+            [$serverIp, $serverPort] = $this->getServerAllocation($server);
             $ttl = (int) $settings->get('subdomains', 'default_ttl', 1);
 
             $records = $cloudflare->createSubdomainRecords(
@@ -122,11 +122,11 @@ class SubdomainController extends AbstractController
             $subdomain->setStatus(Subdomain::STATUS_ACTIVE);
             $subdomain->setLastChangedAt(new \DateTimeImmutable());
 
-            $em->persist($subdomain);
-            $em->flush();
+            $this->entityManager->persist($subdomain);
+            $this->entityManager->flush();
 
             // Log
-            $logRepo = $em->getRepository(SubdomainLog::class);
+            $logRepo = $this->entityManager->getRepository(SubdomainLog::class);
             $logRepo->log('create', $subdomain, $this->getUser()->getId(), [
                 'subdomain' => $subdomainName, 'domain' => $domain->getDomain(),
                 'server_id' => $serverId, 'server_ip' => $serverIp, 'server_port' => $serverPort,
@@ -137,7 +137,7 @@ class SubdomainController extends AbstractController
             $this->addFlash('error', 'Failed to create DNS records: ' . $e->getMessage());
         }
 
-        return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+        return $this->redirectToServerTab($server);
     }
 
     // =========================================================================
@@ -148,19 +148,18 @@ class SubdomainController extends AbstractController
     public function update(int $serverId, Request $request, CloudflareService $cloudflare, PluginSettingService $settings): Response
     {
         $server = $this->getAuthorizedServer($serverId);
-        $em = $this->em();
 
-        $existing = $em->getRepository(Subdomain::class)->findByServer($serverId);
+        $existing = $this->entityManager->getRepository(Subdomain::class)->findByServer($serverId);
         if (!$existing) {
             $this->addFlash('error', 'No subdomain found for this server.');
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
         // Check cooldown
         $cooldownHours = (int) $settings->get('subdomains', 'change_cooldown_hours', 24);
         if ($existing->isOnCooldown($cooldownHours)) {
             $this->addFlash('error', 'Cooldown active. Please wait before changing your subdomain.');
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
         $newName = strtolower(trim($request->request->get('subdomain', '')));
@@ -169,14 +168,13 @@ class SubdomainController extends AbstractController
         $error = $this->validateSubdomain($newName, $domainId, $settings, $existing->getId());
         if ($error) {
             $this->addFlash('error', $error);
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
-        $domain = $em->getRepository(SubdomainDomain::class)->find($domainId);
+        $domain = $this->entityManager->getRepository(SubdomainDomain::class)->find($domainId);
 
         try {
-            $serverIp = $this->getServerIp($server);
-            $serverPort = $this->getServerPort($server);
+            [$serverIp, $serverPort] = $this->getServerAllocation($server);
             $ttl = (int) $settings->get('subdomains', 'default_ttl', 1);
 
             // Delete old DNS
@@ -199,9 +197,9 @@ class SubdomainController extends AbstractController
             $existing->setLastChangedAt(new \DateTimeImmutable());
             $existing->setUpdatedAt(new \DateTimeImmutable());
 
-            $em->flush();
+            $this->entityManager->flush();
 
-            $em->getRepository(SubdomainLog::class)->log('update', $existing, $this->getUser()->getId(), [
+            $this->entityManager->getRepository(SubdomainLog::class)->log('update', $existing, $this->getUser()->getId(), [
                 'old' => $oldAddress, 'new' => $existing->getFullAddress(),
             ], $request->getClientIp());
 
@@ -210,7 +208,7 @@ class SubdomainController extends AbstractController
             $this->addFlash('error', 'Failed to update DNS records: ' . $e->getMessage());
         }
 
-        return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+        return $this->redirectToServerTab($server);
     }
 
     // =========================================================================
@@ -221,12 +219,11 @@ class SubdomainController extends AbstractController
     public function destroy(int $serverId, Request $request, CloudflareService $cloudflare): Response
     {
         $server = $this->getAuthorizedServer($serverId);
-        $em = $this->em();
 
-        $subdomain = $em->getRepository(Subdomain::class)->findByServer($serverId);
+        $subdomain = $this->entityManager->getRepository(Subdomain::class)->findByServer($serverId);
         if (!$subdomain) {
             $this->addFlash('error', 'No subdomain found.');
-            return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+            return $this->redirectToServerTab($server);
         }
 
         // Delete DNS
@@ -238,15 +235,15 @@ class SubdomainController extends AbstractController
         }
 
         $address = $subdomain->getFullAddress();
-        $em->getRepository(SubdomainLog::class)->log('delete', $subdomain, $this->getUser()->getId(), [
+        $this->entityManager->getRepository(SubdomainLog::class)->log('delete', $subdomain, $this->getUser()->getId(), [
             'subdomain' => $address, 'server_id' => $serverId,
         ], $request->getClientIp());
 
-        $em->remove($subdomain);
-        $em->flush();
+        $this->entityManager->remove($subdomain);
+        $this->entityManager->flush();
 
         $this->addFlash('success', 'Subdomain deleted successfully.');
-        return $this->redirectToRoute('plugin_subdomains_show', ['serverId' => $serverId]);
+        return $this->redirectToServerTab($server);
     }
 
     // =========================================================================
@@ -266,7 +263,7 @@ class SubdomainController extends AbstractController
 
         // Check Cloudflare
         try {
-            $domain = $this->em()->getRepository(SubdomainDomain::class)->find($domainId);
+            $domain = $this->entityManager->getRepository(SubdomainDomain::class)->find($domainId);
             if ($domain) {
                 $fullName = $subdomainName . '.' . $domain->getDomain();
                 $existing = $cloudflare->recordExists($domain->getCloudflareZoneId(), $fullName, 'A');
@@ -304,13 +301,13 @@ class SubdomainController extends AbstractController
         }
 
         // Blacklist
-        $blacklistRepo = $this->em()->getRepository(\Plugins\Subdomains\Entity\SubdomainBlacklist::class);
+        $blacklistRepo = $this->entityManager->getRepository(\Plugins\Subdomains\Entity\SubdomainBlacklist::class);
         if ($blacklistRepo->isBlacklisted($subdomain)) {
             return 'This subdomain is not allowed.';
         }
 
         // Uniqueness
-        $subRepo = $this->em()->getRepository(Subdomain::class);
+        $subRepo = $this->entityManager->getRepository(Subdomain::class);
         if ($subRepo->existsBySubdomainAndDomain($subdomain, $domainId, $excludeId)) {
             return 'This subdomain is already taken.';
         }
@@ -321,16 +318,9 @@ class SubdomainController extends AbstractController
     /**
      * Get and authorize the server (user must own it).
      */
-    private function getAuthorizedServer(int $serverId): object
+    private function getAuthorizedServer(int $serverId): Server
     {
-        $em = $this->em();
-
-        // PteroCA Server entity
-        if (class_exists(\App\Core\Entity\Server::class)) {
-            $server = $em->getRepository(\App\Core\Entity\Server::class)->find($serverId);
-        } else {
-            throw $this->createNotFoundException('Server model not found.');
-        }
+        $server = $this->entityManager->getRepository(Server::class)->find($serverId);
 
         if (!$server) {
             throw $this->createNotFoundException('Server not found.');
@@ -338,7 +328,7 @@ class SubdomainController extends AbstractController
 
         // Authorization: user must own the server
         $userId = $this->getUser()?->getId();
-        $serverUserId = method_exists($server, 'getUser') ? $server->getUser()?->getId() : null;
+        $serverUserId = $server->getUser()?->getId();
 
         if ($userId === null || $serverUserId !== $userId) {
             throw $this->createAccessDeniedException('You do not have permission to manage this subdomain.');
@@ -347,19 +337,43 @@ class SubdomainController extends AbstractController
         return $server;
     }
 
-    private function getServerIp(object $server): string
+    /**
+     * Get server IP and port from Pterodactyl API.
+     * @return array{0: string, 1: int} [ip, port]
+     */
+    private function getServerAllocation(Server $server): array
     {
-        if (method_exists($server, 'getIp')) {
-            return $server->getIp() ?? '0.0.0.0';
-        }
-        return '0.0.0.0';
-    }
+        try {
+            $pterodactylServer = $this->pterodactylService
+                ->getApplicationApi()
+                ->servers()
+                ->getServer($server->getPterodactylServerId(), ['allocations']);
 
-    private function getServerPort(object $server): int
-    {
-        if (method_exists($server, 'getPort')) {
-            return (int) ($server->getPort() ?? 25565);
+            $allocations = $pterodactylServer->get('relationships')['allocations'] ?? null;
+            $primaryId = $pterodactylServer->get('allocation') ?? null;
+            $primary = null;
+
+            if ($allocations instanceof \App\Core\DTO\Pterodactyl\Collection) {
+                foreach ($allocations as $a) {
+                    if ($a->get('id') === $primaryId) {
+                        $primary = $a;
+                        break;
+                    }
+                }
+                if ($primary === null && !$allocations->isEmpty()) {
+                    $primary = $allocations->first();
+                }
+            }
+
+            if ($primary) {
+                $ip = $primary->get('alias') ?? $primary->get('ip') ?? '0.0.0.0';
+                $port = (int) ($primary->get('port') ?? 25565);
+                return [$ip, $port];
+            }
+        } catch (\Exception $e) {
+            // Fall through to defaults
         }
-        return 25565;
+
+        return ['0.0.0.0', 25565];
     }
 }

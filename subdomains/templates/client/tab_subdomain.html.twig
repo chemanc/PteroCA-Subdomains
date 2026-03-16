@@ -55,7 +55,7 @@
                     if (previewEl && previewAddr && domainSelect) {
                         if (val.length > 0) {
                             previewEl.style.display = '';
-                            previewAddr.textContent = val + domainSelect.options[domainSelect.selectedIndex].text;
+                            previewAddr.textContent = val + '.' + domainSelect.options[domainSelect.selectedIndex].text.replace(/^\./, '');
                         } else {
                             previewEl.style.display = 'none';
                         }
