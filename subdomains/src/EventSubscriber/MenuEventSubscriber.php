@@ -14,7 +14,7 @@ use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Adds Subdomain menu items to the PteroCA admin navigation.
- * Uses linkToCrud() so pages render within EasyAdmin context (with sidebar).
+ * Items appear in the ADMINISTRACIÓN section as a collapsible submenu.
  */
 class MenuEventSubscriber implements EventSubscriberInterface
 {
@@ -29,33 +29,13 @@ class MenuEventSubscriber implements EventSubscriberInterface
     {
         $menuItems = $event->getMenuItems();
 
-        // Dashboard (Subdomain management overview)
-        $menuItems['main'][] = MenuItem::linkToCrud(
-            'Subdomains',
-            'fas fa-globe',
-            Subdomain::class
-        );
-
-        // Domains management
-        $menuItems['main'][] = MenuItem::linkToCrud(
-            'DNS Domains',
-            'fas fa-server',
-            SubdomainDomain::class
-        );
-
-        // Blacklist CRUD
-        $menuItems['main'][] = MenuItem::linkToCrud(
-            'Subdomain Blacklist',
-            'fas fa-ban',
-            SubdomainBlacklist::class
-        );
-
-        // Activity Logs CRUD
-        $menuItems['main'][] = MenuItem::linkToCrud(
-            'Subdomain Logs',
-            'fas fa-history',
-            SubdomainLog::class
-        );
+        // Add as collapsible submenu in admin section (only visible to admins)
+        $menuItems['admin'][] = MenuItem::subMenu('Subdomains', 'fas fa-globe')->setSubItems([
+            MenuItem::linkToCrud('Dashboard', 'fas fa-chart-bar', Subdomain::class),
+            MenuItem::linkToCrud('DNS Domains', 'fas fa-server', SubdomainDomain::class),
+            MenuItem::linkToCrud('Blacklist', 'fas fa-ban', SubdomainBlacklist::class),
+            MenuItem::linkToCrud('Logs', 'fas fa-history', SubdomainLog::class),
+        ]);
 
         $event->setMenuItems($menuItems);
     }
