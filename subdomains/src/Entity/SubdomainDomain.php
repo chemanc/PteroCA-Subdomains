@@ -21,16 +21,16 @@ class SubdomainDomain
     #[ORM\Column(type: Types::STRING, length: 255, unique: true)]
     private string $domain;
 
-    #[ORM\Column(type: Types::STRING, length: 64)]
+    #[ORM\Column(name: 'cloudflare_zone_id', type: Types::STRING, length: 64)]
     private string $cloudflareZoneId;
 
-    #[ORM\Column(type: Types::BOOLEAN)]
+    #[ORM\Column(name: 'is_default', type: Types::BOOLEAN)]
     private bool $isDefault = false;
 
-    #[ORM\Column(type: Types::BOOLEAN)]
+    #[ORM\Column(name: 'is_active', type: Types::BOOLEAN)]
     private bool $isActive = true;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     /** @var Collection<int, Subdomain> */

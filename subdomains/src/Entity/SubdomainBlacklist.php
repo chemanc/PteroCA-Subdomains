@@ -22,7 +22,7 @@ class SubdomainBlacklist
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $reason = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     public function __construct()

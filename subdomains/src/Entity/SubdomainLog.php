@@ -29,19 +29,19 @@ class SubdomainLog
     #[ORM\JoinColumn(name: 'subdomain_id', nullable: true, onDelete: 'SET NULL')]
     private ?Subdomain $subdomain = null;
 
-    #[ORM\Column(type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(name: 'user_id', type: Types::INTEGER, nullable: true)]
     private ?int $userId = null;
 
-    #[ORM\Column(type: Types::STRING, length: 20)]
+    #[ORM\Column(name: 'action', type: Types::STRING, length: 20)]
     private string $action;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
+    #[ORM\Column(name: 'details', type: Types::JSON, nullable: true)]
     private ?array $details = null;
 
-    #[ORM\Column(type: Types::STRING, length: 45, nullable: true)]
+    #[ORM\Column(name: 'ip_address', type: Types::STRING, length: 45, nullable: true)]
     private ?string $ipAddress = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
     public function __construct()

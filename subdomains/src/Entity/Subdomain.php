@@ -27,38 +27,38 @@ class Subdomain
     #[ORM\Column(type: Types::INTEGER)]
     private ?int $id = null;
 
-    #[ORM\Column(type: Types::INTEGER)]
+    #[ORM\Column(name: 'server_id', type: Types::INTEGER)]
     private int $serverId;
 
-    #[ORM\Column(type: Types::INTEGER)]
+    #[ORM\Column(name: 'user_id', type: Types::INTEGER)]
     private int $userId;
 
-    #[ORM\Column(type: Types::STRING, length: 63)]
+    #[ORM\Column(name: 'subdomain', type: Types::STRING, length: 63)]
     private string $subdomain;
 
     #[ORM\ManyToOne(targetEntity: SubdomainDomain::class, inversedBy: 'subdomains')]
     #[ORM\JoinColumn(name: 'domain_id', nullable: false, onDelete: 'RESTRICT')]
     private SubdomainDomain $domain;
 
-    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    #[ORM\Column(name: 'cloudflare_a_record_id', type: Types::STRING, length: 64, nullable: true)]
     private ?string $cloudflareARecordId = null;
 
-    #[ORM\Column(type: Types::STRING, length: 64, nullable: true)]
+    #[ORM\Column(name: 'cloudflare_srv_record_id', type: Types::STRING, length: 64, nullable: true)]
     private ?string $cloudflareSrvRecordId = null;
 
-    #[ORM\Column(type: Types::STRING, length: 20)]
+    #[ORM\Column(name: 'status', type: Types::STRING, length: 20)]
     private string $status = self::STATUS_PENDING;
 
-    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    #[ORM\Column(name: 'error_message', type: Types::TEXT, nullable: true)]
     private ?string $errorMessage = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[ORM\Column(name: 'last_changed_at', type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $lastChangedAt = null;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'created_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(name: 'updated_at', type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $updatedAt;
 
     /** @var Collection<int, SubdomainLog> */
