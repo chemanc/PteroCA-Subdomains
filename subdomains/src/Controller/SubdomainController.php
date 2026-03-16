@@ -133,8 +133,8 @@ class SubdomainController extends AbstractController
             ], $request->getClientIp());
 
             $this->addFlash('success', 'Subdomain created successfully! DNS may take a few minutes to propagate.');
-        } catch (CloudflareException $e) {
-            $this->addFlash('error', 'Failed to create DNS records: ' . $e->getMessage());
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'Error: ' . $e->getMessage());
         }
 
         return $this->redirectToServerTab($server);
@@ -366,8 +366,14 @@ class SubdomainController extends AbstractController
             }
 
             if ($primary) {
-                $ip = $primary->get('alias') ?? $primary->get('ip') ?? '0.0.0.0';
+                $alias = $primary->get('alias');
+                $ip = (!empty($alias)) ? $alias : ($primary->get('ip') ?? '0.0.0.0');
                 $port = (int) ($primary->get('port') ?? 25565);
+
+                if ($ip === '0.0.0.0') {
+                    throw new \RuntimeException('Could not determine server IP address');
+                }
+
                 return [$ip, $port];
             }
         } catch (\Exception $e) {
