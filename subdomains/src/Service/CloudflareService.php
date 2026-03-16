@@ -54,14 +54,18 @@ class CloudflareService
     /**
      * Create an SRV record for Minecraft server discovery.
      */
-    public function createSRVRecord(string $zoneId, string $name, string $target, int $port, string $domain, int $ttl = 1): array
+    public function createSRVRecord(string $zoneId, string $subdomain, string $target, int $port, string $domain, int $ttl = 1): array
     {
+        // For Cloudflare SRV: _minecraft._tcp.kirkes.thegamedimension.com
+        // data.name must be the full hostname (kirkes.thegamedimension.com)
+        // data.target must be the A record hostname (kirkes.thegamedimension.com)
+        $fullName = $subdomain . '.' . $domain;
         return $this->request('POST', "/zones/{$zoneId}/dns_records", [
             'type' => 'SRV',
             'data' => [
                 'service' => '_minecraft',
                 'proto' => '_tcp',
-                'name' => $name,
+                'name' => $fullName,
                 'priority' => 0,
                 'weight' => 5,
                 'port' => $port,
@@ -115,9 +119,9 @@ class CloudflareService
             throw new CloudflareException('Failed to obtain A record ID from Cloudflare response');
         }
 
-        // Create SRV record for Minecraft
+        // Create SRV record for Minecraft (_minecraft._tcp.kirkes.thegamedimension.com)
         try {
-            $srvResponse = $this->createSRVRecord($zoneId, $fullHostname, $fullHostname, $serverPort, $domain, $ttl);
+            $srvResponse = $this->createSRVRecord($zoneId, $subdomain, $fullHostname, $serverPort, $domain, $ttl);
             $srvRecordId = $srvResponse['result']['id'] ?? null;
         } catch (CloudflareException $e) {
             // Rollback: delete the A record
