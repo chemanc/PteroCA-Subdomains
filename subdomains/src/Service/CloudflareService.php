@@ -56,16 +56,13 @@ class CloudflareService
      */
     public function createSRVRecord(string $zoneId, string $subdomain, string $target, int $port, string $domain, int $ttl = 1): array
     {
-        // For Cloudflare SRV: _minecraft._tcp.kirkes.thegamedimension.com
-        // data.name must be the full hostname (kirkes.thegamedimension.com)
-        // data.target must be the A record hostname (kirkes.thegamedimension.com)
-        $fullName = $subdomain . '.' . $domain;
+        // Cloudflare deprecated service/proto/name inside data (May 2024).
+        // Use root-level 'name' with full SRV name: _service._proto.subdomain.domain
+        $srvName = '_minecraft._tcp.' . $subdomain . '.' . $domain;
         return $this->request('POST', "/zones/{$zoneId}/dns_records", [
             'type' => 'SRV',
+            'name' => $srvName,
             'data' => [
-                'service' => '_minecraft',
-                'proto' => '_tcp',
-                'name' => $fullName,
                 'priority' => 0,
                 'weight' => 5,
                 'port' => $port,
