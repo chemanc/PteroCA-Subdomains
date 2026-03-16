@@ -102,17 +102,22 @@ class CloudflareService
     {
         $fullHostname = $subdomain . '.' . $domain;
 
-        // Create A record
-        $aResponse = $this->createARecord($zoneId, $subdomain, $serverIp, $ttl);
+        $this->logger->info('Creating subdomain DNS records', [
+            'zone_id' => $zoneId, 'subdomain' => $subdomain, 'domain' => $domain,
+            'full_hostname' => $fullHostname, 'server_ip' => $serverIp, 'server_port' => $serverPort,
+        ]);
+
+        // Create A record (name = full hostname for clarity)
+        $aResponse = $this->createARecord($zoneId, $fullHostname, $serverIp, $ttl);
         $aRecordId = $aResponse['result']['id'] ?? null;
 
         if (!$aRecordId) {
             throw new CloudflareException('Failed to obtain A record ID from Cloudflare response');
         }
 
-        // Create SRV record
+        // Create SRV record for Minecraft
         try {
-            $srvResponse = $this->createSRVRecord($zoneId, $subdomain, $fullHostname, $serverPort, $domain, $ttl);
+            $srvResponse = $this->createSRVRecord($zoneId, $fullHostname, $fullHostname, $serverPort, $domain, $ttl);
             $srvRecordId = $srvResponse['result']['id'] ?? null;
         } catch (CloudflareException $e) {
             // Rollback: delete the A record
