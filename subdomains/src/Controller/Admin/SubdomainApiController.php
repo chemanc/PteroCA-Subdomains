@@ -5,60 +5,59 @@ declare(strict_types=1);
 namespace Plugins\Subdomains\Controller\Admin;
 
 use Doctrine\ORM\EntityManagerInterface;
+use EasyCorp\Bundle\EasyAdminBundle\Router\AdminUrlGenerator;
 use Plugins\Subdomains\Entity\Subdomain;
 use Plugins\Subdomains\Entity\SubdomainBlacklist;
 use Plugins\Subdomains\Entity\SubdomainDomain;
 use Plugins\Subdomains\Entity\SubdomainLog;
 use Plugins\Subdomains\Entity\Repository\SubdomainBlacklistRepository;
-use Plugins\Subdomains\Entity\Repository\SubdomainDomainRepository;
-use Plugins\Subdomains\Entity\Repository\SubdomainLogRepository;
-use Plugins\Subdomains\Entity\Repository\SubdomainRepository;
 use Plugins\Subdomains\Exception\CloudflareException;
 use Plugins\Subdomains\Service\CloudflareService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
 
 /**
- * Admin controller for subdomain management.
+ * Handles admin API endpoints (form submissions, AJAX, exports).
+ * These are standard Symfony routes, not EasyAdmin CRUD actions.
  */
-#[Route('/admin', name: 'plugin_subdomains_admin_')]
-class SubdomainAdminController extends AbstractController
+#[Route('/admin/subdomains-api', name: 'plugin_subdomains_api_')]
+class SubdomainApiController extends AbstractController
 {
-    public static function getSubscribedServices(): array
-    {
-        return array_merge(parent::getSubscribedServices(), [
-            'doctrine.orm.entity_manager' => '?' . EntityManagerInterface::class,
-        ]);
+    public function __construct(
+        private readonly EntityManagerInterface $entityManager,
+        private readonly AdminUrlGenerator $adminUrlGenerator,
+    ) {
     }
 
-    private function em(): EntityManagerInterface
+    private function redirectToDashboard(): RedirectResponse
     {
-        return $this->container->get('doctrine.orm.entity_manager');
+        return $this->redirect(
+            $this->adminUrlGenerator
+                ->unsetAll()
+                ->setController(SubdomainCrudController::class)
+                ->setAction('index')
+                ->generateUrl()
+        );
+    }
+
+    private function redirectToDomains(): RedirectResponse
+    {
+        return $this->redirect(
+            $this->adminUrlGenerator
+                ->unsetAll()
+                ->setController(DomainCrudController::class)
+                ->setAction('index')
+                ->generateUrl()
+        );
     }
 
     // =========================================================================
-    // Dashboard
-    // =========================================================================
-
-    #[Route('/dashboard', name: 'dashboard', methods: ['GET'])]
-    public function dashboard(): Response
-    {
-        $subRepo = $this->em()->getRepository(Subdomain::class);
-        $domainRepo = $this->em()->getRepository(SubdomainDomain::class);
-
-        return $this->render('@PluginSubdomains/admin/dashboard.html.twig', [
-            'stats' => $subRepo->getStats(),
-            'recentSubdomains' => $subRepo->findRecent(10),
-            'domains' => $domainRepo->findAll(),
-        ]);
-    }
-
-    // =========================================================================
-    // Settings (Cloudflare test connection)
+    // Cloudflare Test Connection
     // =========================================================================
 
     #[Route('/test-connection', name: 'test_connection', methods: ['POST'])]
@@ -86,21 +85,10 @@ class SubdomainAdminController extends AbstractController
     // Domain Management
     // =========================================================================
 
-    #[Route('/domains', name: 'domains', methods: ['GET'])]
-    public function domains(): Response
-    {
-        $domainRepo = $this->em()->getRepository(SubdomainDomain::class);
-
-        return $this->render('@PluginSubdomains/admin/domains.html.twig', [
-            'domains' => $domainRepo->findBy([], ['isDefault' => 'DESC', 'domain' => 'ASC']),
-        ]);
-    }
-
     #[Route('/domains/add', name: 'domains_add', methods: ['POST'])]
     public function addDomain(Request $request): Response
     {
-        $em = $this->em();
-        $domainRepo = $em->getRepository(SubdomainDomain::class);
+        $domainRepo = $this->entityManager->getRepository(SubdomainDomain::class);
 
         $domainName = strtolower(trim($request->request->get('domain', '')));
         $zoneId = trim($request->request->get('cloudflare_zone_id', ''));
@@ -108,12 +96,12 @@ class SubdomainAdminController extends AbstractController
 
         if (empty($domainName) || empty($zoneId)) {
             $this->addFlash('error', 'Domain and Zone ID are required.');
-            return $this->redirectToRoute('plugin_subdomains_admin_domains');
+            return $this->redirectToDomains();
         }
 
         if ($domainRepo->findOneBy(['domain' => $domainName])) {
             $this->addFlash('error', 'This domain already exists.');
-            return $this->redirectToRoute('plugin_subdomains_admin_domains');
+            return $this->redirectToDomains();
         }
 
         if ($isDefault) {
@@ -125,34 +113,33 @@ class SubdomainAdminController extends AbstractController
         $domain->setCloudflareZoneId($zoneId);
         $domain->setIsDefault($isDefault);
 
-        $em->persist($domain);
-        $em->flush();
+        $this->entityManager->persist($domain);
+        $this->entityManager->flush();
 
         $this->addFlash('success', 'Domain added successfully.');
-        return $this->redirectToRoute('plugin_subdomains_admin_domains');
+        return $this->redirectToDomains();
     }
 
     #[Route('/domains/{id}/delete', name: 'domains_delete', methods: ['POST'])]
     public function deleteDomain(int $id): Response
     {
-        $em = $this->em();
-        $domain = $em->getRepository(SubdomainDomain::class)->find($id);
+        $domain = $this->entityManager->getRepository(SubdomainDomain::class)->find($id);
 
         if (!$domain) {
             $this->addFlash('error', 'Domain not found.');
-            return $this->redirectToRoute('plugin_subdomains_admin_domains');
+            return $this->redirectToDomains();
         }
 
         if ($domain->hasActiveSubdomains()) {
             $this->addFlash('error', 'Cannot delete domain with active subdomains.');
-            return $this->redirectToRoute('plugin_subdomains_admin_domains');
+            return $this->redirectToDomains();
         }
 
-        $em->remove($domain);
-        $em->flush();
+        $this->entityManager->remove($domain);
+        $this->entityManager->flush();
 
         $this->addFlash('success', 'Domain deleted successfully.');
-        return $this->redirectToRoute('plugin_subdomains_admin_domains');
+        return $this->redirectToDomains();
     }
 
     // =========================================================================
@@ -162,7 +149,7 @@ class SubdomainAdminController extends AbstractController
     #[Route('/blacklist/load-defaults', name: 'blacklist_load_defaults', methods: ['POST'])]
     public function loadDefaultBlacklist(): Response
     {
-        $repo = $this->em()->getRepository(SubdomainBlacklist::class);
+        $repo = $this->entityManager->getRepository(SubdomainBlacklist::class);
         $defaults = SubdomainBlacklistRepository::getDefaultBlacklist();
         $count = 0;
 
@@ -173,7 +160,7 @@ class SubdomainAdminController extends AbstractController
         }
 
         $this->addFlash('success', "Default blacklist loaded ({$count} new words added).");
-        return $this->redirectToRoute('plugin_subdomains_admin_dashboard');
+        return $this->redirectToDashboard();
     }
 
     // =========================================================================
@@ -183,9 +170,9 @@ class SubdomainAdminController extends AbstractController
     #[Route('/logs/clear', name: 'logs_clear', methods: ['POST'])]
     public function clearLogs(): Response
     {
-        $this->em()->getRepository(SubdomainLog::class)->clearAll();
+        $this->entityManager->getRepository(SubdomainLog::class)->clearAll();
         $this->addFlash('success', 'All logs cleared.');
-        return $this->redirectToRoute('plugin_subdomains_admin_dashboard');
+        return $this->redirectToDashboard();
     }
 
     // =========================================================================
@@ -195,8 +182,8 @@ class SubdomainAdminController extends AbstractController
     #[Route('/sync', name: 'sync', methods: ['POST'])]
     public function syncDns(CloudflareService $cloudflare): Response
     {
-        $subRepo = $this->em()->getRepository(Subdomain::class);
-        $logRepo = $this->em()->getRepository(SubdomainLog::class);
+        $subRepo = $this->entityManager->getRepository(Subdomain::class);
+        $logRepo = $this->entityManager->getRepository(SubdomainLog::class);
         $subdomains = $subRepo->findActive();
         $synced = 0;
         $errors = 0;
@@ -222,16 +209,16 @@ class SubdomainAdminController extends AbstractController
             }
         }
 
-        $this->em()->flush();
+        $this->entityManager->flush();
         $type = $errors > 0 ? 'warning' : 'success';
         $this->addFlash($type, "DNS Sync: {$synced} OK, {$errors} errors.");
-        return $this->redirectToRoute('plugin_subdomains_admin_dashboard');
+        return $this->redirectToDashboard();
     }
 
     #[Route('/export', name: 'export', methods: ['GET'])]
     public function exportSubdomains(): StreamedResponse
     {
-        $subdomains = $this->em()->getRepository(Subdomain::class)->findAll();
+        $subdomains = $this->entityManager->getRepository(Subdomain::class)->findAll();
 
         return new StreamedResponse(function () use ($subdomains) {
             $handle = fopen('php://output', 'w');

@@ -6,12 +6,15 @@ namespace Plugins\Subdomains\EventSubscriber;
 
 use App\Core\Event\Menu\MenuItemsCollectedEvent;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
+use Plugins\Subdomains\Entity\Subdomain;
 use Plugins\Subdomains\Entity\SubdomainBlacklist;
+use Plugins\Subdomains\Entity\SubdomainDomain;
 use Plugins\Subdomains\Entity\SubdomainLog;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Adds Subdomain menu items to the PteroCA admin navigation.
+ * Uses linkToCrud() so pages render within EasyAdmin context (with sidebar).
  */
 class MenuEventSubscriber implements EventSubscriberInterface
 {
@@ -26,18 +29,18 @@ class MenuEventSubscriber implements EventSubscriberInterface
     {
         $menuItems = $event->getMenuItems();
 
-        // Dashboard link
-        $menuItems['main'][] = MenuItem::linkToRoute(
+        // Dashboard (Subdomain management overview)
+        $menuItems['main'][] = MenuItem::linkToCrud(
             'Subdomains',
             'fas fa-globe',
-            'plugin_subdomains_admin_dashboard'
+            Subdomain::class
         );
 
-        // Domains management link
-        $menuItems['main'][] = MenuItem::linkToRoute(
+        // Domains management
+        $menuItems['main'][] = MenuItem::linkToCrud(
             'DNS Domains',
             'fas fa-server',
-            'plugin_subdomains_admin_domains'
+            SubdomainDomain::class
         );
 
         // Blacklist CRUD

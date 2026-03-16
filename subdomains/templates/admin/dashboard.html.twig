@@ -1,48 +1,38 @@
-{% extends 'base.html.twig' %}
+{% extends '@EasyAdmin/layout.html.twig' %}
 
-{% block title %}{{ 'admin.title'|trans({}, 'plugin_subdomains') }}{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
-    <link rel="stylesheet" href="{{ plugin_asset('subdomains', 'css/subdomains.css') }}">
-{% endblock %}
-
-{% block body %}
-<div class="container-fluid p-4" style="background: #1a1d23; min-height: 100vh; color: #e0e0e0;">
-
-    {# Page Header #}
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <div>
-            <h1 class="h3 mb-0 text-white">{{ 'admin.title'|trans({}, 'plugin_subdomains') }}</h1>
-            <p class="text-secondary mb-0">{{ 'admin.description'|trans({}, 'plugin_subdomains') }}</p>
-        </div>
-        <div class="btn-group">
-            <a href="{{ path('plugin_subdomains_admin_domains') }}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-server"></i> {{ 'admin.domains'|trans({}, 'plugin_subdomains') }}
-            </a>
-            <form action="{{ path('plugin_subdomains_admin_sync') }}" method="POST" class="d-inline">
-                <button type="submit" class="btn btn-outline-light btn-sm" onclick="return confirm('Sync all DNS records?')">
-                    <i class="fas fa-sync"></i> {{ 'admin.sync_dns'|trans({}, 'plugin_subdomains') }}
-                </button>
-            </form>
-            <a href="{{ path('plugin_subdomains_admin_export') }}" class="btn btn-outline-light btn-sm">
-                <i class="fas fa-download"></i> {{ 'admin.export'|trans({}, 'plugin_subdomains') }}
-            </a>
+{% block content_header_wrapper %}
+    <div class="dashboard-header rounded-3 p-4 mb-4 mt-4">
+        <div class="container-fluid">
+            <div class="d-flex align-items-center justify-content-between">
+                <div class="d-flex align-items-center">
+                    <div class="bg-primary rounded-circle me-3">
+                        <i class="fas fa-globe p-3 text-white"></i>
+                    </div>
+                    <div>
+                        <h4 class="mb-1 fw-bold">{{ 'admin.title'|trans({}, 'plugin_subdomains') }}</h4>
+                        <p class="text-muted mb-0">{{ 'admin.description'|trans({}, 'plugin_subdomains') }}</p>
+                    </div>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ ea_url().setController('Plugins\\Subdomains\\Controller\\Admin\\DomainCrudController').setAction('index') }}"
+                       class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-server"></i> {{ 'admin.domains'|trans({}, 'plugin_subdomains') }}
+                    </a>
+                    <form action="{{ path('plugin_subdomains_api_sync') }}" method="POST" class="d-inline">
+                        <button type="submit" class="btn btn-outline-light btn-sm" onclick="return confirm('Sync all DNS records?')">
+                            <i class="fas fa-sync"></i> {{ 'admin.sync_dns'|trans({}, 'plugin_subdomains') }}
+                        </button>
+                    </form>
+                    <a href="{{ path('plugin_subdomains_api_export') }}" class="btn btn-outline-light btn-sm">
+                        <i class="fas fa-download"></i> {{ 'admin.export'|trans({}, 'plugin_subdomains') }}
+                    </a>
+                </div>
+            </div>
         </div>
     </div>
+{% endblock %}
 
-    {# Flash Messages #}
-    {% for type, messages in app.flashes %}
-        {% for message in messages %}
-            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-            </div>
-        {% endfor %}
-    {% endfor %}
-
+{% block main %}
     {# Stats Cards #}
     <div class="row mb-4">
         {% set cards = [
@@ -53,10 +43,10 @@
         ] %}
         {% for card in cards %}
         <div class="col-xl-3 col-md-6 mb-3">
-            <div class="card bg-dark border-{{ card.color }} border-start border-4 h-100">
+            <div class="card border-{{ card.color }} border-start border-4 h-100">
                 <div class="card-body">
                     <div class="small fw-bold text-{{ card.color }} text-uppercase mb-1">{{ card.label|trans({}, 'plugin_subdomains') }}</div>
-                    <div class="h4 mb-0 fw-bold text-white">{{ card.value }}</div>
+                    <div class="h4 mb-0 fw-bold">{{ card.value }}</div>
                 </div>
             </div>
         </div>
@@ -72,10 +62,10 @@
         ] %}
         {% for tc in timeCards %}
         <div class="col-md-4 mb-3">
-            <div class="card bg-dark text-center">
+            <div class="card text-center">
                 <div class="card-body">
                     <div class="small fw-bold text-info text-uppercase mb-1">{{ ('admin.created_' ~ tc.key)|trans({}, 'plugin_subdomains') }}</div>
-                    <div class="h4 mb-0 fw-bold text-white">{{ tc.value }}</div>
+                    <div class="h4 mb-0 fw-bold">{{ tc.value }}</div>
                 </div>
             </div>
         </div>
@@ -85,16 +75,16 @@
     <div class="row">
         {# Recent Subdomains #}
         <div class="col-lg-8 mb-4">
-            <div class="card bg-dark">
-                <div class="card-header border-bottom border-secondary">
+            <div class="card">
+                <div class="card-header">
                     <h6 class="m-0 fw-bold text-info">{{ 'admin.recent_subdomains'|trans({}, 'plugin_subdomains') }}</h6>
                 </div>
-                <div class="card-body">
+                <div class="card-body p-0">
                     {% if recentSubdomains is empty %}
-                        <p class="text-secondary text-center py-4">{{ 'general.no_results'|trans({}, 'plugin_subdomains') }}</p>
+                        <p class="text-muted text-center py-4">{{ 'general.no_results'|trans({}, 'plugin_subdomains') }}</p>
                     {% else %}
                         <div class="table-responsive">
-                            <table class="table table-dark table-hover table-sm">
+                            <table class="table table-striped datagrid mb-0">
                                 <thead><tr>
                                     <th>{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</th>
                                     <th>{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</th>
@@ -133,17 +123,17 @@
         {# Sidebar #}
         <div class="col-lg-4 mb-4">
             {# Domains #}
-            <div class="card bg-dark mb-3">
-                <div class="card-header border-bottom border-secondary">
+            <div class="card mb-3">
+                <div class="card-header">
                     <h6 class="m-0 fw-bold text-info">{{ 'admin.domains'|trans({}, 'plugin_subdomains') }}</h6>
                 </div>
                 <div class="card-body">
                     {% if domains is empty %}
-                        <p class="text-secondary text-center">{{ 'admin.no_domains'|trans({}, 'plugin_subdomains') }}</p>
+                        <p class="text-muted text-center">{{ 'admin.no_domains'|trans({}, 'plugin_subdomains') }}</p>
                     {% else %}
                         <ul class="list-group list-group-flush">
                         {% for domain in domains %}
-                            <li class="list-group-item bg-dark text-light d-flex justify-content-between border-secondary">
+                            <li class="list-group-item d-flex justify-content-between">
                                 <div>
                                     <strong>{{ domain.domain }}</strong>
                                     {% if domain.isDefault %}<span class="badge bg-primary ms-1">Default</span>{% endif %}
@@ -152,24 +142,25 @@
                         {% endfor %}
                         </ul>
                     {% endif %}
-                    <a href="{{ path('plugin_subdomains_admin_domains') }}" class="btn btn-sm btn-info w-100 mt-2">
+                    <a href="{{ ea_url().setController('Plugins\\Subdomains\\Controller\\Admin\\DomainCrudController').setAction('index') }}"
+                       class="btn btn-sm btn-info w-100 mt-2">
                         <i class="fas fa-cog"></i> {{ 'admin.manage_domains'|trans({}, 'plugin_subdomains') }}
                     </a>
                 </div>
             </div>
 
             {# Quick Actions #}
-            <div class="card bg-dark">
-                <div class="card-header border-bottom border-secondary">
+            <div class="card">
+                <div class="card-header">
                     <h6 class="m-0 fw-bold text-info">{{ 'admin.quick_actions'|trans({}, 'plugin_subdomains') }}</h6>
                 </div>
                 <div class="card-body">
-                    <form action="{{ path('plugin_subdomains_admin_blacklist_load_defaults') }}" method="POST" class="mb-2">
+                    <form action="{{ path('plugin_subdomains_api_blacklist_load_defaults') }}" method="POST" class="mb-2">
                         <button type="submit" class="btn btn-outline-warning btn-sm w-100" onclick="return confirm('Load default blacklist?')">
                             <i class="fas fa-ban"></i> {{ 'admin.load_default_blacklist'|trans({}, 'plugin_subdomains') }}
                         </button>
                     </form>
-                    <form action="{{ path('plugin_subdomains_admin_logs_clear') }}" method="POST">
+                    <form action="{{ path('plugin_subdomains_api_logs_clear') }}" method="POST">
                         <button type="submit" class="btn btn-outline-danger btn-sm w-100" onclick="return confirm('Clear all activity logs?')">
                             <i class="fas fa-trash"></i> {{ 'admin.clear_logs'|trans({}, 'plugin_subdomains') }}
                         </button>
@@ -178,9 +169,4 @@
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
-
-{% block body_javascript %}
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 {% endblock %}
