@@ -1,4 +1,7 @@
 {# Partial template rendered inside the server tab via AJAX #}
+{% if subdomain and subdomain.status == 'active' %}
+    <div id="subdomain-data" data-address="{{ subdomain.fullAddress }}" style="display:none;"></div>
+{% endif %}
 
 {# Flash Messages #}
 {% for type, messages in app.flashes %}

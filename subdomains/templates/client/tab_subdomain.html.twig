@@ -17,6 +17,21 @@
         var container = document.getElementById('subdomain-tab-content');
         var serverId = {{ server.id }};
 
+        // Replace IP address in console stats with subdomain if available
+        function replaceAddressDisplay(subdomainAddress) {
+            if (!subdomainAddress) return;
+            var ipEl = document.querySelector('[data-ip]');
+            if (ipEl) {
+                ipEl.textContent = subdomainAddress;
+                ipEl.setAttribute('data-original-ip', ipEl.textContent);
+            }
+            // Also update the copy button if it exists
+            var copyBtn = ipEl ? ipEl.parentElement.querySelector('button[onclick]') : null;
+            if (copyBtn) {
+                copyBtn.setAttribute('onclick', "navigator.clipboard.writeText('" + subdomainAddress + "')");
+            }
+        }
+
         // Load immediately on render
         fetch('/plugins/subdomains/servers/' + serverId + '/subdomain', {
             headers: { 'X-Requested-With': 'XMLHttpRequest' },
@@ -28,6 +43,11 @@
         })
         .then(function(html) {
             container.innerHTML = html;
+            // Replace IP with subdomain in console stats
+            var dataEl = container.querySelector('#subdomain-data');
+            if (dataEl) {
+                replaceAddressDisplay(dataEl.getAttribute('data-address'));
+            }
             initSubdomainScripts();
         })
         .catch(function(err) {
