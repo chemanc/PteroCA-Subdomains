@@ -1,0 +1,40 @@
+name: Build Plugin ZIP
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get version from plugin.json
+        id: version
+        run: |
+          VERSION=$(jq -r '.version' subdomains/plugin.json)
+          SHA_SHORT=$(echo $GITHUB_SHA | cut -c1-7)
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "sha=$SHA_SHORT" >> $GITHUB_OUTPUT
+
+      - name: Create plugin ZIP
+        run: zip -r subdomains.zip subdomains/
+
+      - name: Delete existing latest release
+        run: gh release delete latest --yes --cleanup-tag 2>/dev/null || true
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Create latest release
+        run: |
+          gh release create latest \
+            --title "Subdomains Plugin v${{ steps.version.outputs.version }} (${{ steps.version.outputs.sha }})" \
+            --notes "Auto-built from commit ${{ github.sha }}" \
+            --latest \
+            subdomains.zip
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
