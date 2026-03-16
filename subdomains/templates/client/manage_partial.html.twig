@@ -124,37 +124,37 @@
             {% else %}
                 <p class="text-muted mb-4">{{ 'client.no_subdomain_hint'|trans({}, 'plugin_subdomains') }}</p>
                 <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain" method="POST">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-12 col-md-5">
-                            <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
-                            <input type="text" class="form-control" name="subdomain"
-                                   data-subdomain-input
-                                   placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
-                                   minlength="{{ minLength }}" maxlength="{{ maxLength }}" required autocomplete="off">
-                            <div data-availability-result class="small mt-1"></div>
-                            <small class="form-text text-muted">{{ 'client.help_subdomain_format'|trans({}, 'plugin_subdomains') }}</small>
-                        </div>
-                        <div class="col-12 col-md-4">
+                    <div class="mb-3">
+                        <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
+                        <input type="text" class="form-control form-control-lg" name="subdomain"
+                               data-subdomain-input
+                               placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
+                               minlength="{{ minLength }}" maxlength="{{ maxLength }}" required autocomplete="off">
+                        <div data-availability-result class="small mt-1"></div>
+                        <small class="form-text text-muted">{{ 'client.help_subdomain_format'|trans({}, 'plugin_subdomains') }}</small>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col">
                             <label class="form-label">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</label>
-                            <select class="form-select" name="domain_id" data-domain-select>
+                            <select class="form-select form-select-lg" name="domain_id" data-domain-select>
                                 {% for d in domains %}
                                     <option value="{{ d.id }}" {{ d.isDefault ? 'selected' : '' }}>.{{ d.domain }}</option>
                                 {% endfor %}
                             </select>
                         </div>
-                        <div class="col-12 col-md-3">
-                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-plus me-1"></i>{{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}</button>
-                        </div>
                     </div>
-                    <div data-preview class="rounded p-3 mt-3" style="display:none; background: var(--sidebar-bg, #2a2d35);">
+                    <div data-preview class="rounded p-3 mb-3" style="display:none; background: var(--sidebar-bg, #2a2d35);">
                         <small class="text-muted">{{ 'client.subdomain_preview'|trans({}, 'plugin_subdomains') }}</small>
                         <h5 class="mb-0 font-monospace" data-preview-address></h5>
                     </div>
+                    <button type="submit" class="btn btn-primary btn-lg">
+                        <i class="fas fa-plus me-1"></i>{{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}
+                    </button>
+                    <div class="mt-3">
+                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_dns_propagation'|trans({}, 'plugin_subdomains') }}</small><br>
+                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_srv_record'|trans({}, 'plugin_subdomains') }}</small>
+                    </div>
                 </form>
-                <div class="mt-3">
-                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_dns_propagation'|trans({}, 'plugin_subdomains') }}</small><br>
-                    <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_srv_record'|trans({}, 'plugin_subdomains') }}</small>
-                </div>
             {% endif %}
         </div>
     </div>
