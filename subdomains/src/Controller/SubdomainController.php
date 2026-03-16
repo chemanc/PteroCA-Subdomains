@@ -347,7 +347,7 @@ class SubdomainController extends AbstractController
             $pterodactylServer = $this->pterodactylService
                 ->getApplicationApi()
                 ->servers()
-                ->getServer($server->getPterodactylServerId(), ['allocations']);
+                ->getServer((string) $server->getPterodactylServerId(), ['allocations']);
 
             $allocations = $pterodactylServer->get('relationships')['allocations'] ?? null;
             $primaryId = $pterodactylServer->get('allocation') ?? null;
