@@ -1,14 +1,11 @@
 # ===========================================
-# Claude / AI assistant files (NOT part of the project)
+# Claude / AI assistant files
 # ===========================================
 CLAUDE.md
 PLAN.md
 INITIAL_PROMPT.md
 Xontext/
 .claude/
-
-# Original translation source files (canonical copies are in src/resources/lang/)
-/resources/
 
 # ===========================================
 # IDE and OS
@@ -27,6 +24,7 @@ desktop.ini
 # ===========================================
 /vendor/
 /node_modules/
+subdomains/vendor/
 
 # ===========================================
 # Environment
@@ -36,23 +34,11 @@ desktop.ini
 .env.production
 
 # ===========================================
-# Logs and cache
+# Build artifacts
 # ===========================================
 *.log
-storage/
-bootstrap/cache/
-
-# ===========================================
-# Testing
-# ===========================================
+*.zip
 .phpunit.result.cache
 .phpunit.cache/
 coverage/
-
-# ===========================================
-# Build artifacts
-# ===========================================
-/public/hot
-/public/storage
-npm-debug.log
-yarn-error.log
+composer.lock

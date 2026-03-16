@@ -1,35 +1,44 @@
 # Troubleshooting
 
-## Common Issues
+## Plugin Won't Enable
 
-### "Cloudflare API is not configured"
+**Check health:**
+```bash
+php bin/console pteroca:plugin:health subdomains --detailed
+```
 
-**Cause:** No API token has been saved in settings.
+**Check security scan:**
+```bash
+php bin/console pteroca:plugin:security-scan subdomains --detailed
+```
 
-**Fix:** Go to Admin > Subdomains > Settings and enter your Cloudflare API token.
+**Common causes:**
+- Missing `plugin.json` or invalid format
+- PHP version below 8.2
+- PteroCA version outside the min/max range (requires 0.6.0 - 1.0.0)
+- Critical security issues detected
 
 ---
 
-### "Failed to connect to Cloudflare"
+## "Cloudflare API token is not configured"
 
-**Cause:** Invalid API token or Zone ID.
+Go to **Admin > Settings > Plugins** and enter your Cloudflare API token. Make sure to save the settings.
 
-**Fix:**
+---
+
+## "Failed to connect to Cloudflare"
+
 1. Verify your API token has "Zone:DNS:Edit" permissions
 2. Verify the Zone ID matches your domain
 3. Check if the token has expired
 4. Try creating a new API token
+5. Use the **Test Connection** button in Admin > Subdomains > Domains
 
 ---
 
-### DNS Not Resolving After Creating Subdomain
+## DNS Not Resolving
 
-**Cause:** DNS propagation delay.
-
-**Fix:**
-- Wait up to 5 minutes for DNS propagation
-- Check the subdomain status in the admin panel
-- Use `nslookup` or `dig` to verify:
+DNS propagation can take up to 5 minutes. Verify with:
 
 ```bash
 # Check A record
@@ -39,104 +48,66 @@ nslookup myserver.yourdomain.com
 nslookup -type=SRV _minecraft._tcp.myserver.yourdomain.com
 ```
 
----
-
-### "This subdomain already exists in DNS"
-
-**Cause:** A DNS record with that name already exists in Cloudflare (possibly created manually).
-
-**Fix:**
-1. Check your Cloudflare DNS dashboard for existing records
-2. Delete the conflicting record manually
-3. Try creating the subdomain again
+Check the subdomain status in the admin dashboard — if it shows "Error", the error message will explain what went wrong.
 
 ---
 
-### "This subdomain is not allowed"
+## "This subdomain is not allowed"
 
-**Cause:** The subdomain matches a blacklisted word.
+The subdomain matches a blacklisted word. The blacklist checks both exact matches and substrings (e.g., "admin" blocks "admin", "myadmin", "administrator").
 
-**Fix:**
-- If the word shouldn't be blocked, remove it from the blacklist in Admin > Subdomains > Blacklist
-- The blacklist checks both exact matches and substrings
+To manage: **Admin > Subdomain Blacklist**
 
 ---
 
-### Server Address Shows Wrong IP/Port
+## Server Address Shows Wrong IP/Port
 
-**Cause:** The plugin reads the server's allocation IP and port from PteroCA.
-
-**Fix:**
-1. Verify the server's allocation is correct in PteroCA
-2. If changed, delete and recreate the subdomain
-3. Check that the server node IP is accessible externally
+The plugin reads the server's IP and port from PteroCA's Server entity. If the server's allocation changed after the subdomain was created, delete and recreate the subdomain.
 
 ---
 
-### Rate Limit Errors (429)
+## Subdomain Not Deleted After Server Termination
 
-**Cause:** Too many requests in a short period.
-
-**Fix:**
-- Wait 1 minute and try again
-- Admin can adjust the rate limit in settings (default: 5 req/min)
+1. Check that **Auto-delete on Server Termination** is enabled in Admin > Settings > Plugins
+2. Check **Admin > Subdomain Logs** for error entries
+3. The `ServerEventSubscriber` listens to PteroCA server events — verify the events are being dispatched
 
 ---
 
-### Migration Errors
+## Migration Errors
 
-**Cause:** Database compatibility or permission issues.
-
-**Fix:**
 ```bash
 # Check migration status
-php artisan migrate:status
+php bin/console doctrine:migrations:status
 
-# Run with verbose output
-php artisan migrate -v
+# Run migrations manually
+php bin/console doctrine:migrations:migrate
 
-# If tables already exist partially, rollback and retry
-php artisan migrate:rollback --step=1
-php artisan migrate
+# Verify schema
+php bin/console doctrine:schema:validate
 ```
-
----
-
-### Subdomain Not Deleted After Server Termination
-
-**Cause:** Auto-delete may be disabled, or the observer failed.
-
-**Fix:**
-1. Check Admin > Settings > "Auto-delete on Server Termination" is enabled
-2. Check Admin > Logs for error entries
-3. Manually delete the subdomain from the admin panel
-4. Check Cloudflare DNS dashboard for orphaned records
 
 ---
 
 ## Checking Logs
 
 ### Application Logs
-
 ```bash
-tail -f /var/www/pteroca/storage/logs/laravel.log | grep -i subdomain
+tail -f /var/www/pteroca/var/log/prod.log | grep -i subdomain
 ```
 
-### Activity Logs
-
-Go to **Admin > Subdomains > Logs** to see all subdomain-related activity.
+### Plugin Activity Logs
+Go to **Admin > Subdomain Logs** to see all subdomain-related activity.
 
 ### DNS Sync
-
-Use **Admin > Subdomains > Sync DNS Records** to verify all subdomains match their Cloudflare records. This will flag any discrepancies.
+Use the **Sync DNS Records** button on the admin dashboard to verify all subdomains match their Cloudflare records.
 
 ## Getting Help
 
 If you continue to experience issues:
-
-1. Check the [activity logs](#checking-logs) for detailed error messages
-2. Review your Cloudflare API token permissions
-3. Open an issue on the GitHub repository with:
+1. Check plugin health: `php bin/console pteroca:plugin:health subdomains --detailed`
+2. Check the activity logs for detailed error messages
+3. Open an issue on [GitHub](https://github.com/chemanc/PteroCA-Subdomains/issues) with:
    - Error message (from logs)
    - PteroCA version
    - PHP version

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'admin.domain_management'|trans({}, 'plugin_subdomains') }}</title>
+    <link rel="stylesheet" href="{{ plugin_asset('subdomains', 'css/subdomains.css') }}">
+</head>
+<body>
+<div class="container-fluid p-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">{{ 'admin.domain_management'|trans({}, 'plugin_subdomains') }}</h1>
+            <a href="{{ path('plugin_subdomains_admin_dashboard') }}" class="text-muted">
+                &larr; {{ 'admin.back_to_dashboard'|trans({}, 'plugin_subdomains') }}
+            </a>
+        </div>
+    </div>
+
+    {# Flash Messages #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {# Existing Domains #}
+    <div class="card shadow mb-4">
+        <div class="card-header"><h6 class="m-0 fw-bold text-primary">{{ 'admin.configured_domains'|trans({}, 'plugin_subdomains') }}</h6></div>
+        <div class="card-body">
+            {% if domains is empty %}
+                <p class="text-muted text-center py-3">{{ 'admin.no_domains'|trans({}, 'plugin_subdomains') }}</p>
+            {% else %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead><tr>
+                            <th>{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</th>
+                            <th>Zone ID</th>
+                            <th>Default</th>
+                            <th>{{ 'general.status'|trans({}, 'plugin_subdomains') }}</th>
+                            <th>{{ 'general.actions'|trans({}, 'plugin_subdomains') }}</th>
+                        </tr></thead>
+                        <tbody>
+                        {% for domain in domains %}
+                            <tr>
+                                <td><strong>{{ domain.domain }}</strong></td>
+                                <td><code>{{ domain.cloudflareZoneId }}</code></td>
+                                <td>{% if domain.isDefault %}<span class="badge bg-primary">Yes</span>{% else %}<span class="text-muted">No</span>{% endif %}</td>
+                                <td>{% if domain.isActive %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Disabled</span>{% endif %}</td>
+                                <td>
+                                    <form action="{{ path('plugin_subdomains_admin_domains_delete', {id: domain.id}) }}" method="POST" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this domain?')">
+                                            <i class="fas fa-trash"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Add Domain Form #}
+    <div class="card shadow mb-4">
+        <div class="card-header"><h6 class="m-0 fw-bold text-primary">{{ 'admin.add_domain'|trans({}, 'plugin_subdomains') }}</h6></div>
+        <div class="card-body">
+            <form action="{{ path('plugin_subdomains_admin_domains_add') }}" method="POST">
+                <div class="row align-items-end">
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label">{{ 'admin.domain_name'|trans({}, 'plugin_subdomains') }}</label>
+                        <input type="text" class="form-control" name="domain" placeholder="example.com" required>
+                    </div>
+                    <div class="col-md-4 mb-2">
+                        <label class="form-label">Cloudflare Zone ID</label>
+                        <input type="text" class="form-control" name="cloudflare_zone_id" placeholder="Zone ID" required>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <div class="form-check mt-4">
+                            <input type="checkbox" class="form-check-input" name="is_default" value="1">
+                            <label class="form-check-label">Default</label>
+                        </div>
+                    </div>
+                    <div class="col-md-2 mb-2">
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="fas fa-plus"></i> {{ 'admin.add_domain'|trans({}, 'plugin_subdomains') }}
+                        </button>
+                    </div>
+                </div>
+            </form>
+
+            {# Test Connection #}
+            <hr>
+            <h6>{{ 'admin.test_connection'|trans({}, 'plugin_subdomains') }}</h6>
+            <div class="row align-items-end">
+                <div class="col-md-8 mb-2">
+                    <input type="text" class="form-control" id="testZoneId" placeholder="Enter Zone ID to test">
+                </div>
+                <div class="col-md-4 mb-2">
+                    <button type="button" class="btn btn-outline-info w-100" id="btnTestConnection">
+                        <i class="fas fa-plug"></i> {{ 'admin.test_connection'|trans({}, 'plugin_subdomains') }}
+                    </button>
+                </div>
+            </div>
+            <div id="testResult" class="mt-2"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('btnTestConnection').addEventListener('click', function() {
+    const btn = this;
+    const zoneId = document.getElementById('testZoneId').value.trim();
+    const resultDiv = document.getElementById('testResult');
+
+    if (!zoneId) { resultDiv.innerHTML = '<span class="text-danger">Please enter a Zone ID.</span>'; return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+    resultDiv.innerHTML = '';
+
+    fetch('{{ path("plugin_subdomains_admin_test_connection") }}', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: 'zone_id=' + encodeURIComponent(zoneId),
+    })
+    .then(r => r.json())
+    .then(data => {
+        resultDiv.innerHTML = data.success
+            ? '<span class="text-success"><i class="fas fa-check-circle"></i> ' + data.message + ' (Zone: ' + (data.data?.zone_name || '') + ')</span>'
+            : '<span class="text-danger"><i class="fas fa-times-circle"></i> ' + data.message + '</span>';
+    })
+    .catch(() => { resultDiv.innerHTML = '<span class="text-danger">Connection failed.</span>'; })
+    .finally(() => { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plug"></i> Test Connection'; });
+});
+</script>
+</body>
+</html>

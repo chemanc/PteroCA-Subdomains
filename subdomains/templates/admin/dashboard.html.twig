@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="{{ app.request.locale }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ 'admin.title'|trans({}, 'plugin_subdomains') }}</title>
+    <link rel="stylesheet" href="{{ plugin_asset('subdomains', 'css/subdomains.css') }}">
+</head>
+<body>
+<div class="container-fluid p-4">
+    {# Page Header #}
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h1 class="h3 mb-0">{{ 'admin.title'|trans({}, 'plugin_subdomains') }}</h1>
+            <p class="text-muted mb-0">{{ 'admin.description'|trans({}, 'plugin_subdomains') }}</p>
+        </div>
+        <div class="btn-group">
+            <a href="{{ path('plugin_subdomains_admin_domains') }}" class="btn btn-outline-primary btn-sm">
+                <i class="fas fa-server"></i> {{ 'admin.domains'|trans({}, 'plugin_subdomains') }}
+            </a>
+            <form action="{{ path('plugin_subdomains_admin_sync') }}" method="POST" class="d-inline">
+                <button type="submit" class="btn btn-outline-secondary btn-sm" onclick="return confirm('Sync all DNS records?')">
+                    <i class="fas fa-sync"></i> {{ 'admin.sync_dns'|trans({}, 'plugin_subdomains') }}
+                </button>
+            </form>
+            <a href="{{ path('plugin_subdomains_admin_export') }}" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-download"></i> {{ 'admin.export'|trans({}, 'plugin_subdomains') }}
+            </a>
+        </div>
+    </div>
+
+    {# Flash Messages #}
+    {% for type, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="alert alert-{{ type == 'error' ? 'danger' : type }} alert-dismissible fade show">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    {# Stats Cards #}
+    <div class="row mb-4">
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card shadow h-100 py-2 border-start border-primary border-4">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-primary text-uppercase mb-1">{{ 'admin.total_subdomains'|trans({}, 'plugin_subdomains') }}</div>
+                    <div class="h5 mb-0 fw-bold">{{ stats.total }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card shadow h-100 py-2 border-start border-success border-4">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-success text-uppercase mb-1">{{ 'admin.active_subdomains'|trans({}, 'plugin_subdomains') }}</div>
+                    <div class="h5 mb-0 fw-bold">{{ stats.active }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card shadow h-100 py-2 border-start border-warning border-4">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-warning text-uppercase mb-1">{{ 'admin.suspended'|trans({}, 'plugin_subdomains') }}</div>
+                    <div class="h5 mb-0 fw-bold">{{ stats.suspended }}</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3 col-md-6 mb-3">
+            <div class="card shadow h-100 py-2 border-start border-danger border-4">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-danger text-uppercase mb-1">{{ 'admin.errors'|trans({}, 'plugin_subdomains') }}</div>
+                    <div class="h5 mb-0 fw-bold">{{ stats.error }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Secondary stats #}
+    <div class="row mb-4">
+        {% for key in ['today', 'this_week', 'this_month'] %}
+        <div class="col-md-4 mb-3">
+            <div class="card shadow text-center">
+                <div class="card-body">
+                    <div class="text-xs fw-bold text-info text-uppercase mb-1">{{ ('admin.created_' ~ key)|trans({}, 'plugin_subdomains') }}</div>
+                    <div class="h4 mb-0 fw-bold">{{ stats[key] }}</div>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="row">
+        {# Recent Subdomains #}
+        <div class="col-lg-8 mb-4">
+            <div class="card shadow">
+                <div class="card-header"><h6 class="m-0 fw-bold text-primary">{{ 'admin.recent_subdomains'|trans({}, 'plugin_subdomains') }}</h6></div>
+                <div class="card-body">
+                    {% if recentSubdomains is empty %}
+                        <p class="text-muted text-center py-4">{{ 'general.no_results'|trans({}, 'plugin_subdomains') }}</p>
+                    {% else %}
+                        <div class="table-responsive">
+                            <table class="table table-hover table-sm">
+                                <thead><tr>
+                                    <th>{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</th>
+                                    <th>{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</th>
+                                    <th>Server</th>
+                                    <th>{{ 'general.status'|trans({}, 'plugin_subdomains') }}</th>
+                                    <th>{{ 'general.created'|trans({}, 'plugin_subdomains') }}</th>
+                                </tr></thead>
+                                <tbody>
+                                {% for sub in recentSubdomains %}
+                                    <tr>
+                                        <td><strong>{{ sub.subdomain }}</strong></td>
+                                        <td>{{ sub.domain.domain }}</td>
+                                        <td>#{{ sub.serverId }}</td>
+                                        <td>
+                                            {% if sub.status == 'active' %}
+                                                <span class="badge bg-success">{{ 'status.active'|trans({}, 'plugin_subdomains') }}</span>
+                                            {% elseif sub.status == 'pending' %}
+                                                <span class="badge bg-warning text-dark">{{ 'status.pending'|trans({}, 'plugin_subdomains') }}</span>
+                                            {% elseif sub.status == 'suspended' %}
+                                                <span class="badge bg-secondary">{{ 'status.suspended'|trans({}, 'plugin_subdomains') }}</span>
+                                            {% elseif sub.status == 'error' %}
+                                                <span class="badge bg-danger" title="{{ sub.errorMessage }}">{{ 'status.error'|trans({}, 'plugin_subdomains') }}</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ sub.createdAt|date('Y-m-d H:i') }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {# Domains Panel #}
+        <div class="col-lg-4 mb-4">
+            <div class="card shadow">
+                <div class="card-header"><h6 class="m-0 fw-bold text-primary">{{ 'admin.domains'|trans({}, 'plugin_subdomains') }}</h6></div>
+                <div class="card-body">
+                    {% if domains is empty %}
+                        <p class="text-muted text-center">{{ 'admin.no_domains'|trans({}, 'plugin_subdomains') }}</p>
+                    {% else %}
+                        <ul class="list-group list-group-flush">
+                        {% for domain in domains %}
+                            <li class="list-group-item d-flex justify-content-between">
+                                <div>
+                                    <strong>{{ domain.domain }}</strong>
+                                    {% if domain.isDefault %}<span class="badge bg-primary ms-1">Default</span>{% endif %}
+                                    {% if not domain.isActive %}<span class="badge bg-secondary ms-1">Disabled</span>{% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                        </ul>
+                    {% endif %}
+                    <a href="{{ path('plugin_subdomains_admin_domains') }}" class="btn btn-sm btn-primary w-100 mt-2">
+                        <i class="fas fa-cog"></i> {{ 'admin.manage_domains'|trans({}, 'plugin_subdomains') }}
+                    </a>
+                </div>
+            </div>
+
+            {# Quick Actions #}
+            <div class="card shadow mt-3">
+                <div class="card-header"><h6 class="m-0 fw-bold text-primary">{{ 'admin.quick_actions'|trans({}, 'plugin_subdomains') }}</h6></div>
+                <div class="card-body">
+                    <form action="{{ path('plugin_subdomains_admin_blacklist_load_defaults') }}" method="POST" class="mb-2">
+                        <button type="submit" class="btn btn-outline-warning btn-sm w-100" onclick="return confirm('Load default blacklist?')">
+                            <i class="fas fa-ban"></i> {{ 'admin.load_default_blacklist'|trans({}, 'plugin_subdomains') }}
+                        </button>
+                    </form>
+                    <form action="{{ path('plugin_subdomains_admin_logs_clear') }}" method="POST">
+                        <button type="submit" class="btn btn-outline-danger btn-sm w-100" onclick="return confirm('Clear all activity logs?')">
+                            <i class="fas fa-trash"></i> {{ 'admin.clear_logs'|trans({}, 'plugin_subdomains') }}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

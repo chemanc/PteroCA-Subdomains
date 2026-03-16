@@ -1,0 +1,100 @@
+{
+    "name": "subdomains",
+    "display_name": "Subdomain Manager",
+    "version": "1.0.0",
+    "author": "XMA Corporation",
+    "description": "Custom subdomain management for game servers via Cloudflare DNS API. Creates A + SRV records for Minecraft servers, allowing players to connect using memorable addresses like myserver.yourdomain.com.",
+    "license": "MIT",
+    "pteroca": {
+        "min": "0.6.0",
+        "max": "1.0.0"
+    },
+    "capabilities": [
+        "routes",
+        "entities",
+        "migrations",
+        "ui",
+        "eda"
+    ],
+    "requires": {},
+    "bootstrap_class": "Plugins\\Subdomains\\Bootstrap",
+    "config_schema": {
+        "cloudflare_api_token": {
+            "type": "password",
+            "default": "",
+            "hierarchy": "general",
+            "required": true,
+            "label": "Cloudflare API Token",
+            "help": "Create a token with 'Edit zone DNS' permissions at Cloudflare Dashboard > My Profile > API Tokens"
+        },
+        "min_length": {
+            "type": "integer",
+            "default": 3,
+            "hierarchy": "general",
+            "required": false,
+            "label": "Minimum Subdomain Length",
+            "help": "Minimum number of characters for subdomains"
+        },
+        "max_length": {
+            "type": "integer",
+            "default": 32,
+            "hierarchy": "general",
+            "required": false,
+            "label": "Maximum Subdomain Length",
+            "help": "Maximum number of characters for subdomains"
+        },
+        "change_cooldown_hours": {
+            "type": "integer",
+            "default": 24,
+            "hierarchy": "general",
+            "required": false,
+            "label": "Change Cooldown (hours)",
+            "help": "Hours users must wait before changing their subdomain again. Set to 0 to disable."
+        },
+        "default_ttl": {
+            "type": "select",
+            "default": "1",
+            "hierarchy": "general",
+            "required": false,
+            "label": "Default DNS TTL",
+            "help": "Time-to-live for DNS records. 1 = Auto (Cloudflare managed).",
+            "options": {
+                "1": "Auto",
+                "60": "1 minute",
+                "300": "5 minutes",
+                "1800": "30 minutes",
+                "3600": "1 hour",
+                "43200": "12 hours",
+                "86400": "1 day"
+            }
+        },
+        "auto_delete_on_terminate": {
+            "type": "boolean",
+            "default": true,
+            "hierarchy": "advanced",
+            "required": false,
+            "label": "Auto-delete on Server Termination",
+            "help": "Automatically delete DNS records when a server is terminated"
+        },
+        "auto_suspend_on_suspend": {
+            "type": "boolean",
+            "default": true,
+            "hierarchy": "advanced",
+            "required": false,
+            "label": "Auto-suspend on Server Suspension",
+            "help": "Automatically disable DNS records when a server is suspended"
+        },
+        "rate_limit": {
+            "type": "integer",
+            "default": 5,
+            "hierarchy": "advanced",
+            "required": false,
+            "label": "Rate Limit (requests/minute)",
+            "help": "Maximum subdomain API requests per minute per user"
+        }
+    },
+    "assets": {
+        "css": ["css/subdomains.css"],
+        "js": ["js/subdomains.js"]
+    }
+}

@@ -1,0 +1,14 @@
+{
+    "name": "pteroca/subdomains-plugin",
+    "description": "Custom subdomain management for game servers via Cloudflare DNS API",
+    "type": "library",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "Plugins\\Subdomains\\": "src/"
+        }
+    }
+}

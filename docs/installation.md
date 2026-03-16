@@ -2,108 +2,102 @@
 
 ## Prerequisites
 
-- PteroCA installed and running (typically at `/var/www/pteroca`)
-- PHP 8.1 or higher
+- PteroCA v0.6.0 or higher installed and running
+- PHP 8.2 or higher
 - MySQL or MariaDB database
 - SSH access to your server
 - A Cloudflare account (free tier works)
 
-## Step-by-Step Installation
+## Installation Methods
 
-### 1. Download the Plugin
+### Method 1: Upload via Admin Panel (Recommended)
 
-```bash
-# Clone or download the repository
-git clone https://github.com/chemanc/PteroCA-Subdomains.git /tmp/pteroca-subdomains
-```
-
-### 2. Copy Plugin Files
-
-Copy all files from `src/` into your PteroCA installation directory:
-
-```bash
-# App files (controllers, models, services, etc.)
-cp -r /tmp/pteroca-subdomains/src/app/* /var/www/pteroca/app/
-
-# Configuration
-cp /tmp/pteroca-subdomains/src/config/subdomains.php /var/www/pteroca/config/
-
-# Database migrations
-cp -r /tmp/pteroca-subdomains/src/database/* /var/www/pteroca/database/
-
-# Views and translations
-cp -r /tmp/pteroca-subdomains/src/resources/* /var/www/pteroca/resources/
-
-# Routes
-cp /tmp/pteroca-subdomains/src/routes/subdomains.php /var/www/pteroca/routes/
-```
-
-### 3. Register the ServiceProvider
-
-Edit `/var/www/pteroca/config/app.php` and add the ServiceProvider to the `providers` array:
-
-```php
-'providers' => [
-    // ... existing providers ...
-    App\Providers\SubdomainServiceProvider::class,
-],
-```
-
-### 4. Run Database Migrations
+1. Download `subdomains.zip` from the [GitHub Releases](https://github.com/chemanc/PteroCA-Subdomains/releases) page
+2. Log in to PteroCA as an administrator
+3. Navigate to **Admin Panel > Plugins > Upload Plugin**
+4. Upload the ZIP file (max 50MB)
+5. PteroCA will automatically validate, scan, and extract the plugin
+6. Enable the plugin:
 
 ```bash
 cd /var/www/pteroca
-php artisan migrate
+php bin/console pteroca:plugin:enable subdomains
 ```
 
-This creates 5 tables:
-- `pteroca_subdomains` — Main subdomain records
-- `pteroca_subdomain_domains` — Domain configuration
-- `pteroca_subdomain_blacklist` — Blocked subdomains
-- `pteroca_subdomain_logs` — Activity audit trail
-- `pteroca_subdomain_settings` — Plugin settings (with defaults)
-
-### 5. Set File Permissions
+### Method 2: Manual File Placement
 
 ```bash
-chown -R www-data:www-data /var/www/pteroca/app/
-chown -R www-data:www-data /var/www/pteroca/resources/views/vendor/
-```
+# Clone the repository
+cd /tmp
+git clone https://github.com/chemanc/PteroCA-Subdomains.git
 
-### 6. Clear Cache
+# Copy the plugin folder to PteroCA's plugins directory
+cp -r /tmp/PteroCA-Subdomains/subdomains/ /var/www/pteroca/plugins/subdomains/
 
-```bash
+# Set permissions
+chown -R www-data:www-data /var/www/pteroca/plugins/subdomains/
+
+# Scan for new plugins
 cd /var/www/pteroca
-php artisan config:clear
-php artisan route:clear
-php artisan view:clear
-php artisan cache:clear
+php bin/console pteroca:plugin:scan
+
+# Enable the plugin (runs migrations automatically)
+php bin/console pteroca:plugin:enable subdomains
+
+# Clean up
+rm -rf /tmp/PteroCA-Subdomains
 ```
 
-### 7. Configure the Plugin
+## What Happens During Enablement
 
-1. Log in to PteroCA as an administrator
-2. Navigate to **Admin > Subdomains > Settings**
-3. Enter your Cloudflare API token
-4. Add your domain(s) with Cloudflare Zone ID(s)
-5. Click **Test Connection** to verify
-6. Go to **Blacklist** and click **Load Default Blacklist**
+When you enable the plugin, PteroCA automatically:
 
-See [configuration.md](configuration.md) and [cloudflare-setup.md](cloudflare-setup.md) for details.
+1. Validates the plugin manifest (`plugin.json`)
+2. Runs a security scan
+3. Executes database migrations (creates 4 tables + inserts default settings)
+4. Publishes assets to `/public/assets/plugins/subdomains/`
+5. Registers services, controllers, entities, and event subscribers
+6. Calls `Bootstrap::initialize()`
+
+## Post-Installation Configuration
+
+1. Go to **Admin > Settings > Plugins**
+2. Find the "Subdomain Manager" section
+3. Enter your **Cloudflare API Token** (see [Cloudflare Setup](cloudflare-setup.md))
+4. Adjust settings as needed (min/max length, cooldown, TTL, etc.)
+5. Go to **Admin > Subdomains > Domains** and add your domain(s)
+6. Click **Test Connection** to verify Cloudflare connectivity
+7. Optionally load the default blacklist from the admin dashboard
+
+## Verifying Installation
+
+```bash
+# Check plugin status
+php bin/console pteroca:plugin:list
+
+# Check plugin health
+php bin/console pteroca:plugin:health subdomains --detailed
+
+# Verify tables were created
+php bin/console doctrine:schema:validate
+```
 
 ## Updating
 
-To update the plugin:
-
-1. Back up your database
-2. Download the new version
-3. Copy files over (same as step 2 above)
-4. Run `php artisan migrate` for any new migrations
-5. Clear cache
+1. Download the new version
+2. Replace the `plugins/subdomains/` folder
+3. Run: `php bin/console pteroca:plugin:enable subdomains` (re-runs any new migrations)
+4. Clear cache: `php bin/console cache:clear`
 
 ## Uninstalling
 
-1. Remove the ServiceProvider from `config/app.php`
-2. Run: `php artisan migrate:rollback` (rolls back the subdomain tables)
-3. Delete the plugin files from the directories listed in step 2
-4. Clear cache
+```bash
+# Disable the plugin
+php bin/console pteroca:plugin:disable subdomains
+
+# The plugin's database tables and settings remain intact for re-enablement
+# To fully remove, delete the folder:
+rm -rf /var/www/pteroca/plugins/subdomains/
+```
+
+**Note:** Disabling the plugin does NOT delete database tables or user data. This is by design, so you can re-enable without losing data.

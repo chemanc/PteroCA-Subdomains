@@ -1,0 +1,49 @@
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Bootstrap
+    Plugins\Subdomains\Bootstrap:
+        public: true
+
+    # Services
+    Plugins\Subdomains\Service\CloudflareService:
+        public: true
+
+    # Repositories
+    Plugins\Subdomains\Entity\Repository\SubdomainRepository:
+        arguments: ['@doctrine']
+        tags: ['doctrine.repository_service']
+        public: true
+
+    Plugins\Subdomains\Entity\Repository\SubdomainDomainRepository:
+        arguments: ['@doctrine']
+        tags: ['doctrine.repository_service']
+        public: true
+
+    Plugins\Subdomains\Entity\Repository\SubdomainBlacklistRepository:
+        arguments: ['@doctrine']
+        tags: ['doctrine.repository_service']
+        public: true
+
+    Plugins\Subdomains\Entity\Repository\SubdomainLogRepository:
+        arguments: ['@doctrine']
+        tags: ['doctrine.repository_service']
+        public: true
+
+    # CRUD Controllers
+    Plugins\Subdomains\Controller\Admin\BlacklistCrudController:
+        tags: ['controller.service_arguments']
+        public: true
+
+    Plugins\Subdomains\Controller\Admin\LogCrudController:
+        tags: ['controller.service_arguments']
+        public: true
+
+    # Event Subscribers (auto-discovered by PluginEventSubscriberRegistry)
+    Plugins\Subdomains\EventSubscriber\MenuEventSubscriber:
+        public: true
+
+    Plugins\Subdomains\EventSubscriber\ServerEventSubscriber:
+        public: true
