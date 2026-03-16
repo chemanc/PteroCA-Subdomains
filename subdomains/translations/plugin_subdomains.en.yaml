@@ -31,6 +31,7 @@ client:
     create_subdomain: 'Create Subdomain'
     change_subdomain: 'Change Subdomain'
     delete_subdomain: 'Delete Subdomain'
+    choose_subdomain: 'Choose your subdomain'
     subdomain_placeholder: 'Enter your desired subdomain'
     subdomain_preview: 'Your server address will be:'
     copy_address: 'Copy Address'
