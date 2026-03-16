@@ -2,6 +2,29 @@
 
 All notable changes to PteroCA Subdomains will be documented in this file.
 
+## [1.0.1] - 2026-03-16
+
+### Fixed
+- Cloudflare SRV record format updated (deprecated fields removed post May 2024)
+- Server IP/port now fetched from Pterodactyl API instead of hardcoded fallback
+- Entity column names fixed (`cloudflare_a_record_id` mapping)
+- Config schema types corrected (`string`/`integer`/`boolean` instead of `password`/`select`)
+- Settings migration removed (PteroCA auto-generates from `config_schema`)
+
+### Changed
+- Admin pages now use EasyAdmin CrudControllers (proper sidebar integration)
+- Templates extend `@EasyAdmin/layout.html.twig` for consistent panel UI
+- Menu items use `linkToCrud()` for EasyAdmin routing
+- API endpoints moved to `/admin/subdomains-api/` prefix
+- Form submissions redirect back to server tab (`#subdomain`)
+
+### Added
+- **Server tab "Subdomain"** integrated in server management page
+- Subdomain replaces IP in console "DIRECCIÓN" card when active
+- AJAX-loaded tab content with availability checker
+- Copy-to-clipboard for subdomain address
+- GitHub Actions auto-build ZIP on push to main
+
 ## [2.0.0] - 2026-03-16
 
 ### Changed
