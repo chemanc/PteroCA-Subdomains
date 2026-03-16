@@ -20,7 +20,7 @@ final class Version20240101000005 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // General settings (hierarchy: 100)
-        $this->addSql("INSERT INTO setting (name, value, type, context, hierarchy, nullable) VALUES ('cloudflare_api_token', '', 'password', 'plugin:subdomains', 100, false)");
+        $this->addSql("INSERT INTO setting (name, value, type, context, hierarchy, nullable) VALUES ('cloudflare_api_token', '', 'string', 'plugin:subdomains', 100, false)");
         $this->addSql("INSERT INTO setting (name, value, type, context, hierarchy, nullable) VALUES ('min_length', '3', 'integer', 'plugin:subdomains', 100, false)");
         $this->addSql("INSERT INTO setting (name, value, type, context, hierarchy, nullable) VALUES ('max_length', '32', 'integer', 'plugin:subdomains', 100, false)");
         $this->addSql("INSERT INTO setting (name, value, type, context, hierarchy, nullable) VALUES ('change_cooldown_hours', '24', 'integer', 'plugin:subdomains', 100, false)");

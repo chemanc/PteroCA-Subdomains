@@ -20,7 +20,7 @@
     "bootstrap_class": "Plugins\\Subdomains\\Bootstrap",
     "config_schema": {
         "cloudflare_api_token": {
-            "type": "password",
+            "type": "string",
             "default": "",
             "hierarchy": "general",
             "required": true,
@@ -52,21 +52,12 @@
             "help": "Hours users must wait before changing their subdomain again. Set to 0 to disable."
         },
         "default_ttl": {
-            "type": "select",
+            "type": "string",
             "default": "1",
             "hierarchy": "general",
             "required": false,
             "label": "Default DNS TTL",
-            "help": "Time-to-live for DNS records. 1 = Auto (Cloudflare managed).",
-            "options": {
-                "1": "Auto",
-                "60": "1 minute",
-                "300": "5 minutes",
-                "1800": "30 minutes",
-                "3600": "1 hour",
-                "43200": "12 hours",
-                "86400": "1 day"
-            }
+            "help": "Time-to-live for DNS records. Values: 1=Auto, 60=1min, 300=5min, 1800=30min, 3600=1h, 43200=12h, 86400=1day"
         },
         "auto_delete_on_terminate": {
             "type": "boolean",
