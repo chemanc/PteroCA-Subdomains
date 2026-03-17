@@ -36,7 +36,14 @@ class AddressReplacerSubscriber implements EventSubscriberInterface
             return;
         }
 
+        $request = $event->getRequest();
         $response = $event->getResponse();
+
+        // Skip AJAX requests (tab content loaded via fetch)
+        if ($request->isXmlHttpRequest()) {
+            return;
+        }
+
         $contentType = $response->headers->get('Content-Type', '');
 
         // Only process HTML responses
