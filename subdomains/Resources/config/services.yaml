@@ -51,6 +51,11 @@ services:
     Plugins\Subdomains\EventSubscriber\AddressReplacerSubscriber:
         public: true
 
+    # Twig Extension (provides subdomain data to templates)
+    Plugins\Subdomains\Twig\SubdomainExtension:
+        tags: ['twig.extension']
+        public: true
+
     # Server Tab (adds "Subdomain" tab to server management page)
     Plugins\Subdomains\Tab\SubdomainTab:
         tags: ['server.tab']

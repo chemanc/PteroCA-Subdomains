@@ -2,128 +2,144 @@
     <div class="tab-pane" id="subdomain">
         <div class="row pt-3">
             <div class="col-12">
-                <div id="subdomain-tab-content">
-                    <div class="text-center py-5">
-                        <i class="fas fa-spinner fa-spin fa-2x"></i>
-                        <p class="mt-2 text-muted">Cargando...</p>
+                {% set subdomain = get_subdomain_for_server(server.id) %}
+                {% set domains = get_subdomain_domains() %}
+                {% set minLength = get_subdomain_setting('min_length', 3) %}
+                {% set maxLength = get_subdomain_setting('max_length', 32) %}
+                {% set cooldownHours = get_subdomain_setting('change_cooldown_hours', 24) %}
+                {% set cooldownRemaining = subdomain ? subdomain.getCooldownRemaining(cooldownHours) : null %}
+
+                {% if subdomain %}
+                    {# HAS SUBDOMAIN #}
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class="fas fa-globe me-2"></i>{{ 'client.your_subdomain'|trans({}, 'plugin_subdomains') }}</h5>
+                            {% if subdomain.status == 'active' %}
+                                <span class="badge bg-success">{{ 'status.active'|trans({}, 'plugin_subdomains') }}</span>
+                            {% elseif subdomain.status == 'pending' %}
+                                <span class="badge bg-warning text-dark">{{ 'status.pending'|trans({}, 'plugin_subdomains') }}</span>
+                            {% elseif subdomain.status == 'suspended' %}
+                                <span class="badge bg-secondary">{{ 'status.suspended'|trans({}, 'plugin_subdomains') }}</span>
+                            {% elseif subdomain.status == 'error' %}
+                                <span class="badge bg-danger">{{ 'status.error'|trans({}, 'plugin_subdomains') }}</span>
+                            {% endif %}
+                        </div>
+                        <div class="card-body">
+                            {% if subdomain.status == 'error' and subdomain.errorMessage %}
+                                <div class="alert alert-danger"><i class="fas fa-exclamation-triangle me-1"></i>{{ subdomain.errorMessage }}</div>
+                            {% endif %}
+
+                            {% if subdomain.status == 'active' %}
+                                <div class="rounded p-4 mb-4 text-center" style="background: var(--sidebar-bg, #2a2d35);">
+                                    <small class="text-muted d-block mb-1">{{ 'client.minecraft_connect'|trans({}, 'plugin_subdomains') }}</small>
+                                    <h3 class="mb-2 font-monospace">{{ subdomain.fullAddress }}</h3>
+                                    <button type="button" class="btn btn-outline-info btn-sm" onclick="navigator.clipboard.writeText('{{ subdomain.fullAddress }}').then(function(){var b=event.target.closest('button');var o=b.innerHTML;b.innerHTML='<i class=\'fas fa-check\'></i> Copied!';setTimeout(function(){b.innerHTML=o;},2000);})">
+                                        <i class="fas fa-copy me-1"></i>{{ 'client.copy_address'|trans({}, 'plugin_subdomains') }}
+                                    </button>
+                                    <small class="d-block mt-2 text-success">
+                                        <i class="fas fa-info-circle me-1"></i>{{ 'client.minecraft_port_note'|trans({}, 'plugin_subdomains') }}
+                                    </small>
+                                </div>
+                            {% endif %}
+
+                            <div class="row mb-4">
+                                <div class="col-md-4"><strong class="text-muted">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}:</strong><br><code class="text-info">{{ subdomain.subdomain }}</code></div>
+                                <div class="col-md-4"><strong class="text-muted">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}:</strong><br>{{ subdomain.domain.domain }}</div>
+                                <div class="col-md-4"><strong class="text-muted">{{ 'general.created'|trans({}, 'plugin_subdomains') }}:</strong><br>{{ subdomain.createdAt|date('Y-m-d H:i') }}</div>
+                            </div>
+
+                            <hr>
+
+                            <div class="d-flex gap-2">
+                                {% if cooldownRemaining %}
+                                    <button class="btn btn-outline-warning" disabled>
+                                        <i class="fas fa-clock me-1"></i>{{ 'client.change_subdomain'|trans({}, 'plugin_subdomains') }} ({{ cooldownRemaining }})
+                                    </button>
+                                {% else %}
+                                    <button class="btn btn-outline-warning" data-bs-toggle="collapse" data-bs-target="#changeForm">
+                                        <i class="fas fa-edit me-1"></i>{{ 'client.change_subdomain'|trans({}, 'plugin_subdomains') }}
+                                    </button>
+                                {% endif %}
+
+                                <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/delete" method="POST"
+                                      onsubmit="return confirm('{{ 'client.confirm_delete_text'|trans({}, 'plugin_subdomains') }}')">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('subdomain_destroy') }}">
+                                    <button type="submit" class="btn btn-outline-danger">
+                                        <i class="fas fa-trash me-1"></i>{{ 'client.delete_subdomain'|trans({}, 'plugin_subdomains') }}
+                                    </button>
+                                </form>
+                            </div>
+
+                            {% if not cooldownRemaining %}
+                            <div class="collapse mt-3" id="changeForm">
+                                <div class="card card-body">
+                                    <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/update" method="POST">
+                                        <input type="hidden" name="_token" value="{{ csrf_token('subdomain_update') }}">
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
+                                            <input type="text" class="form-control" name="subdomain"
+                                                   placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
+                                                   minlength="{{ minLength }}" maxlength="{{ maxLength }}" required>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label class="form-label">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</label>
+                                            <select class="form-select" name="domain_id">
+                                                {% for d in domains %}
+                                                    <option value="{{ d.id }}" {{ d.id == subdomain.domain.id ? 'selected' : '' }}>.{{ d.domain }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-warning"><i class="fas fa-save me-1"></i>{{ 'general.update'|trans({}, 'plugin_subdomains') }}</button>
+                                    </form>
+                                </div>
+                            </div>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
+
+                {% else %}
+                    {# NO SUBDOMAIN — Create form #}
+                    <div class="card border-0 shadow-sm rounded-3">
+                        <div class="card-header">
+                            <h5 class="mb-0"><i class="fas fa-globe me-2"></i>{{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}</h5>
+                        </div>
+                        <div class="card-body">
+                            {% if domains is empty %}
+                                <div class="alert alert-warning"><i class="fas fa-exclamation-triangle me-1"></i>{{ 'client.domain_not_configured'|trans({}, 'plugin_subdomains') }}</div>
+                            {% else %}
+                                <p class="text-muted mb-4">{{ 'client.no_subdomain_hint'|trans({}, 'plugin_subdomains') }}</p>
+                                <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain" method="POST">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('subdomain_store') }}">
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
+                                        <input type="text" class="form-control form-control-lg" name="subdomain"
+                                               placeholder="{{ 'client.subdomain_placeholder'|trans({}, 'plugin_subdomains') }}"
+                                               minlength="{{ minLength }}" maxlength="{{ maxLength }}" required autocomplete="off">
+                                        <small class="form-text text-muted">{{ 'client.help_subdomain_format'|trans({}, 'plugin_subdomains') }}</small>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">{{ 'general.domain'|trans({}, 'plugin_subdomains') }}</label>
+                                        <select class="form-select form-select-lg" name="domain_id">
+                                            {% for d in domains %}
+                                                <option value="{{ d.id }}" {{ d.isDefault ? 'selected' : '' }}>.{{ d.domain }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary btn-lg">
+                                        <i class="fas fa-plus me-1"></i>{{ 'client.create_subdomain'|trans({}, 'plugin_subdomains') }}
+                                    </button>
+                                    <div class="mt-3">
+                                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_dns_propagation'|trans({}, 'plugin_subdomains') }}</small><br>
+                                        <small class="text-muted"><i class="fas fa-info-circle me-1"></i>{{ 'client.help_srv_record'|trans({}, 'plugin_subdomains') }}</small>
+                                    </div>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endif %}
+
+                {% include '@PluginSubdomains/components/footer.html.twig' %}
             </div>
         </div>
     </div>
-
-    <script>
-    (function() {
-        var container = document.getElementById('subdomain-tab-content');
-        var serverId = {{ server.id }};
-
-        // Replace IP address in console stats with subdomain if available
-        function replaceAddressDisplay(subdomainAddress) {
-            if (!subdomainAddress) return;
-            var ipEl = document.querySelector('[data-ip]');
-            if (ipEl) {
-                ipEl.textContent = subdomainAddress;
-                ipEl.setAttribute('data-original-ip', ipEl.textContent);
-            }
-            // Also update the copy button if it exists
-            var copyBtn = ipEl ? ipEl.parentElement.querySelector('button[onclick]') : null;
-            if (copyBtn) {
-                copyBtn.setAttribute('onclick', "navigator.clipboard.writeText('" + subdomainAddress + "')");
-            }
-        }
-
-        // Load immediately on render
-        fetch('/plugins/subdomains/servers/' + serverId + '/subdomain', {
-            headers: { 'X-Requested-With': 'XMLHttpRequest' },
-            credentials: 'same-origin'
-        })
-        .then(function(response) {
-            if (!response.ok) throw new Error('HTTP ' + response.status);
-            return response.text();
-        })
-        .then(function(html) {
-            container.innerHTML = html;
-            // Replace IP with subdomain in console stats
-            var dataEl = container.querySelector('#subdomain-data');
-            if (dataEl) {
-                replaceAddressDisplay(dataEl.getAttribute('data-address'));
-            }
-            initSubdomainScripts();
-        })
-        .catch(function(err) {
-            container.innerHTML = '<div class="alert alert-danger">'
-                + '<i class="fas fa-exclamation-triangle"></i> Error loading subdomain manager. '
-                + '<a href="/plugins/subdomains/servers/' + serverId + '/subdomain" class="alert-link">Open in new page</a>'
-                + '</div>';
-        });
-
-        function initSubdomainScripts() {
-            var checkUrl = '/plugins/subdomains/api/check-availability';
-            var inputs = container.querySelectorAll('[data-subdomain-input]');
-
-            inputs.forEach(function(input) {
-                var timer;
-                var resultEl = input.parentElement.querySelector('[data-availability-result]');
-                var domainSelect = input.closest('form').querySelector('[data-domain-select]');
-                var previewEl = input.closest('form').querySelector('[data-preview]');
-                var previewAddr = input.closest('form').querySelector('[data-preview-address]');
-
-                input.addEventListener('input', function() {
-                    clearTimeout(timer);
-                    var val = input.value.trim().toLowerCase();
-
-                    if (previewEl && previewAddr && domainSelect) {
-                        if (val.length > 0) {
-                            previewEl.style.display = '';
-                            previewAddr.textContent = val + '.' + domainSelect.options[domainSelect.selectedIndex].text.replace(/^\./, '');
-                        } else {
-                            previewEl.style.display = 'none';
-                        }
-                    }
-
-                    if (val.length < 3) {
-                        if (resultEl) resultEl.innerHTML = '';
-                        return;
-                    }
-
-                    timer = setTimeout(function() {
-                        var domainId = domainSelect ? domainSelect.value : '';
-                        var formData = new FormData();
-                        formData.append('subdomain', val);
-                        formData.append('domain_id', domainId);
-
-                        fetch(checkUrl, { method: 'POST', body: formData, credentials: 'same-origin' })
-                        .then(function(r) { return r.json(); })
-                        .then(function(data) {
-                            if (resultEl) {
-                                var escaped = data.message.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-                                resultEl.innerHTML = data.available
-                                    ? '<span class="text-success"><i class="fas fa-check-circle"></i> ' + escaped + '</span>'
-                                    : '<span class="text-danger"><i class="fas fa-times-circle"></i> ' + escaped + '</span>';
-                            }
-                        });
-                    }, 500);
-                });
-
-                if (domainSelect) {
-                    domainSelect.addEventListener('change', function() {
-                        input.dispatchEvent(new Event('input'));
-                    });
-                }
-            });
-
-            var copyBtn = container.querySelector('[data-copy-address]');
-            if (copyBtn) {
-                copyBtn.addEventListener('click', function() {
-                    var addr = copyBtn.getAttribute('data-copy-address');
-                    navigator.clipboard.writeText(addr).then(function() {
-                        var original = copyBtn.innerHTML;
-                        copyBtn.innerHTML = '<i class="fas fa-check"></i> Copied!';
-                        setTimeout(function() { copyBtn.innerHTML = original; }, 2000);
-                    });
-                });
-            }
-        }
-    })();
-    </script>
 {% endblock %}

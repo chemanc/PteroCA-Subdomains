@@ -54,6 +54,6 @@ class SubdomainTab implements ServerTabInterface
 
     public function requiresFullReload(): bool
     {
-        return true;
+        return false;
     }
 }
