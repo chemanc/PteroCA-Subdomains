@@ -49,6 +49,7 @@
                             <td>{% if domain.isActive %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Disabled</span>{% endif %}</td>
                             <td>
                                 <form action="{{ path('plugin_subdomains_api_domains_delete', {id: domain.id}) }}" method="POST" class="d-inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('admin_action') }}">
                                     <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this domain?')">
                                         <i class="fas fa-trash"></i>
                                     </button>
@@ -69,6 +70,7 @@
         </div>
         <div class="card-body">
             <form action="{{ path('plugin_subdomains_api_domains_add') }}" method="POST">
+                <input type="hidden" name="_token" value="{{ csrf_token('admin_action') }}">
                 <div class="row align-items-end">
                     <div class="col-md-4 mb-2">
                         <label class="form-label">{{ 'admin.domain_name'|trans({}, 'plugin_subdomains') }}</label>
@@ -134,9 +136,10 @@
         })
         .then(function(r) { return r.json(); })
         .then(function(data) {
+            var esc = function(s) { return s ? s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;') : ''; };
             resultDiv.innerHTML = data.success
-                ? '<span class="text-success"><i class="fas fa-check-circle"></i> ' + data.message + ' (Zone: ' + (data.data && data.data.zone_name ? data.data.zone_name : '') + ')</span>'
-                : '<span class="text-danger"><i class="fas fa-times-circle"></i> ' + data.message + '</span>';
+                ? '<span class="text-success"><i class="fas fa-check-circle"></i> ' + esc(data.message) + ' (Zone: ' + esc(data.data && data.data.zone_name ? data.data.zone_name : '') + ')</span>'
+                : '<span class="text-danger"><i class="fas fa-times-circle"></i> ' + esc(data.message) + '</span>';
         })
         .catch(function() { resultDiv.innerHTML = '<span class="text-danger">Connection failed.</span>'; })
         .finally(function() { btn.disabled = false; btn.innerHTML = '<i class="fas fa-plug"></i> Test Connection'; });

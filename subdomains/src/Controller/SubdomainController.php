@@ -18,11 +18,13 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Client controller for subdomain management (per server).
  */
 #[Route(name: 'plugin_subdomains_')]
+#[IsGranted('IS_AUTHENTICATED_FULLY')]
 class SubdomainController extends AbstractController
 {
     public function __construct(
@@ -81,6 +83,11 @@ class SubdomainController extends AbstractController
     {
         $server = $this->getAuthorizedServer($serverId);
 
+        if (!$this->isCsrfTokenValid('subdomain_store', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToServerTab($server);
+        }
+
         // Check server doesn't already have a subdomain
         if ($this->entityManager->getRepository(Subdomain::class)->findByServer($serverId)) {
             $this->addFlash('error', 'This server already has a subdomain.');
@@ -133,8 +140,10 @@ class SubdomainController extends AbstractController
             ], $request->getClientIp());
 
             $this->addFlash('success', 'Subdomain created successfully! DNS may take a few minutes to propagate.');
+        } catch (CloudflareException $e) {
+            $this->addFlash('error', 'Failed to create DNS records. Please try again or contact support.');
         } catch (\Exception $e) {
-            $this->addFlash('error', 'Error: ' . $e->getMessage());
+            $this->addFlash('error', 'An unexpected error occurred. Please try again.');
         }
 
         return $this->redirectToServerTab($server);
@@ -148,6 +157,11 @@ class SubdomainController extends AbstractController
     public function update(int $serverId, Request $request, CloudflareService $cloudflare, PluginSettingService $settings): Response
     {
         $server = $this->getAuthorizedServer($serverId);
+
+        if (!$this->isCsrfTokenValid('subdomain_update', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToServerTab($server);
+        }
 
         $existing = $this->entityManager->getRepository(Subdomain::class)->findByServer($serverId);
         if (!$existing) {
@@ -205,7 +219,9 @@ class SubdomainController extends AbstractController
 
             $this->addFlash('success', 'Subdomain updated successfully!');
         } catch (CloudflareException $e) {
-            $this->addFlash('error', 'Failed to update DNS records: ' . $e->getMessage());
+            $this->addFlash('error', 'Failed to update DNS records. Please try again or contact support.');
+        } catch (\Exception $e) {
+            $this->addFlash('error', 'An unexpected error occurred. Please try again.');
         }
 
         return $this->redirectToServerTab($server);
@@ -219,6 +235,11 @@ class SubdomainController extends AbstractController
     public function destroy(int $serverId, Request $request, CloudflareService $cloudflare): Response
     {
         $server = $this->getAuthorizedServer($serverId);
+
+        if (!$this->isCsrfTokenValid('subdomain_destroy', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token. Please try again.');
+            return $this->redirectToServerTab($server);
+        }
 
         $subdomain = $this->entityManager->getRepository(Subdomain::class)->findByServer($serverId);
         if (!$subdomain) {
@@ -377,9 +398,9 @@ class SubdomainController extends AbstractController
                 return [$ip, $port];
             }
         } catch (\Exception $e) {
-            // Fall through to defaults
+            throw new \RuntimeException('Unable to retrieve server IP from Pterodactyl: ' . $e->getMessage());
         }
 
-        return ['0.0.0.0', 25565];
+        throw new \RuntimeException('Server allocation not found in Pterodactyl');
     }
 }

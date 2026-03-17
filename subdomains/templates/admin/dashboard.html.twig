@@ -19,6 +19,7 @@
                         <i class="fas fa-server"></i> {{ 'admin.domains'|trans({}, 'plugin_subdomains') }}
                     </a>
                     <form action="{{ path('plugin_subdomains_api_sync') }}" method="POST" class="d-inline">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_action') }}">
                         <button type="submit" class="btn btn-outline-light btn-sm" onclick="return confirm('Sync all DNS records?')">
                             <i class="fas fa-sync"></i> {{ 'admin.sync_dns'|trans({}, 'plugin_subdomains') }}
                         </button>
@@ -156,11 +157,13 @@
                 </div>
                 <div class="card-body">
                     <form action="{{ path('plugin_subdomains_api_blacklist_load_defaults') }}" method="POST" class="mb-2">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_action') }}">
                         <button type="submit" class="btn btn-outline-warning btn-sm w-100" onclick="return confirm('Load default blacklist?')">
                             <i class="fas fa-ban"></i> {{ 'admin.load_default_blacklist'|trans({}, 'plugin_subdomains') }}
                         </button>
                     </form>
                     <form action="{{ path('plugin_subdomains_api_logs_clear') }}" method="POST">
+                        <input type="hidden" name="_token" value="{{ csrf_token('admin_action') }}">
                         <button type="submit" class="btn btn-outline-danger btn-sm w-100" onclick="return confirm('Clear all activity logs?')">
                             <i class="fas fa-trash"></i> {{ 'admin.clear_logs'|trans({}, 'plugin_subdomains') }}
                         </button>

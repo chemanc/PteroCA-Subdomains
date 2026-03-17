@@ -20,12 +20,15 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
  * Handles admin API endpoints (form submissions, AJAX, exports).
  * These are standard Symfony routes, not EasyAdmin CRUD actions.
+ * Requires ROLE_ADMIN for all endpoints.
  */
 #[Route('/admin/subdomains-api', name: 'plugin_subdomains_api_')]
+#[IsGranted('ROLE_ADMIN')]
 class SubdomainApiController extends AbstractController
 {
     public function __construct(
@@ -88,6 +91,11 @@ class SubdomainApiController extends AbstractController
     #[Route('/domains/add', name: 'domains_add', methods: ['POST'])]
     public function addDomain(Request $request): Response
     {
+        if (!$this->isCsrfTokenValid('admin_action', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToDomains();
+        }
+
         $domainRepo = $this->entityManager->getRepository(SubdomainDomain::class);
 
         $domainName = strtolower(trim($request->request->get('domain', '')));
@@ -96,6 +104,18 @@ class SubdomainApiController extends AbstractController
 
         if (empty($domainName) || empty($zoneId)) {
             $this->addFlash('error', 'Domain and Zone ID are required.');
+            return $this->redirectToDomains();
+        }
+
+        // Validate domain format
+        if (!preg_match('/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*\.[a-z]{2,}$/', $domainName)) {
+            $this->addFlash('error', 'Invalid domain format.');
+            return $this->redirectToDomains();
+        }
+
+        // Validate zone ID format (32-char hex)
+        if (!preg_match('/^[a-f0-9]{32}$/', $zoneId)) {
+            $this->addFlash('error', 'Invalid Zone ID format.');
             return $this->redirectToDomains();
         }
 
@@ -121,8 +141,13 @@ class SubdomainApiController extends AbstractController
     }
 
     #[Route('/domains/{id}/delete', name: 'domains_delete', methods: ['POST'])]
-    public function deleteDomain(int $id): Response
+    public function deleteDomain(int $id, Request $request): Response
     {
+        if (!$this->isCsrfTokenValid('admin_action', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToDomains();
+        }
+
         $domain = $this->entityManager->getRepository(SubdomainDomain::class)->find($id);
 
         if (!$domain) {
@@ -147,8 +172,13 @@ class SubdomainApiController extends AbstractController
     // =========================================================================
 
     #[Route('/blacklist/load-defaults', name: 'blacklist_load_defaults', methods: ['POST'])]
-    public function loadDefaultBlacklist(): Response
+    public function loadDefaultBlacklist(Request $request): Response
     {
+        if (!$this->isCsrfTokenValid('admin_action', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToDashboard();
+        }
+
         $repo = $this->entityManager->getRepository(SubdomainBlacklist::class);
         $defaults = SubdomainBlacklistRepository::getDefaultBlacklist();
         $count = 0;
@@ -168,8 +198,13 @@ class SubdomainApiController extends AbstractController
     // =========================================================================
 
     #[Route('/logs/clear', name: 'logs_clear', methods: ['POST'])]
-    public function clearLogs(): Response
+    public function clearLogs(Request $request): Response
     {
+        if (!$this->isCsrfTokenValid('admin_action', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToDashboard();
+        }
+
         $this->entityManager->getRepository(SubdomainLog::class)->clearAll();
         $this->addFlash('success', 'All logs cleared.');
         return $this->redirectToDashboard();
@@ -180,8 +215,13 @@ class SubdomainApiController extends AbstractController
     // =========================================================================
 
     #[Route('/sync', name: 'sync', methods: ['POST'])]
-    public function syncDns(CloudflareService $cloudflare): Response
+    public function syncDns(Request $request, CloudflareService $cloudflare): Response
     {
+        if (!$this->isCsrfTokenValid('admin_action', $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid security token.');
+            return $this->redirectToDashboard();
+        }
+
         $subRepo = $this->entityManager->getRepository(Subdomain::class);
         $logRepo = $this->entityManager->getRepository(SubdomainLog::class);
         $subdomains = $subRepo->findActive();

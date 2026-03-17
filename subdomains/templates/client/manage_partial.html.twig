@@ -73,6 +73,7 @@
 
                 <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/delete" method="POST"
                       onsubmit="return confirm('{{ 'client.confirm_delete_text'|trans({}, 'plugin_subdomains') }}')">
+                    <input type="hidden" name="_token" value="{{ csrf_token('subdomain_destroy') }}">
                     <button type="submit" class="btn btn-outline-danger">
                         <i class="fas fa-trash me-1"></i>{{ 'client.delete_subdomain'|trans({}, 'plugin_subdomains') }}
                     </button>
@@ -84,6 +85,7 @@
                 <div class="card card-body">
                     <p class="text-warning small mb-3"><i class="fas fa-exclamation-triangle me-1"></i>{{ 'client.confirm_change_text'|trans({}, 'plugin_subdomains') }}</p>
                     <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain/update" method="POST">
+                        <input type="hidden" name="_token" value="{{ csrf_token('subdomain_update') }}">
                         <div class="row g-3 align-items-end">
                             <div class="col-12 col-md-5">
                                 <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
@@ -127,6 +129,7 @@
             {% else %}
                 <p class="text-muted mb-4">{{ 'client.no_subdomain_hint'|trans({}, 'plugin_subdomains') }}</p>
                 <form action="/plugins/subdomains/servers/{{ server.id }}/subdomain" method="POST">
+                    <input type="hidden" name="_token" value="{{ csrf_token('subdomain_store') }}">
                     <div class="mb-3">
                         <label class="form-label">{{ 'general.subdomain'|trans({}, 'plugin_subdomains') }}</label>
                         <input type="text" class="form-control form-control-lg" name="subdomain"

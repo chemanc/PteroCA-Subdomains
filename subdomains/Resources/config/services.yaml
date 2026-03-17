@@ -52,3 +52,8 @@ services:
     Plugins\Subdomains\Tab\SubdomainTab:
         tags: ['server.tab']
         public: true
+
+    # Dashboard Widget (replaces IPs with subdomain addresses)
+    Plugins\Subdomains\Widget\SubdomainAddressWidget:
+        tags: ['widget']
+        public: true

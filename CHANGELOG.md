@@ -2,6 +2,25 @@
 
 All notable changes to PteroCA Subdomains will be documented in this file.
 
+## [1.0.2] - 2026-03-16
+
+### Security
+- CSRF protection on all state-changing forms (client + admin)
+- `#[IsGranted('ROLE_ADMIN')]` on all admin API endpoints
+- `#[IsGranted('IS_AUTHENTICATED_FULLY')]` on all client endpoints
+- XSS prevention: HTML escaping on all dynamic JavaScript output
+- Generic error messages (no internal Cloudflare/server details exposed)
+- Input validation: domain format regex, Zone ID hex format validation
+- Removed 0.0.0.0 IP fallback (throws exception instead of creating bogus DNS)
+
+### Changed
+- Admin menu moved to ADMINISTRACIÓN section as collapsible "Subdomains" submenu
+- Admin menu items only visible to admins (not regular users)
+
+### Added
+- DRY footer component (`components/footer.html.twig`) with copyright + Buy Me a Coffee
+- Footer included in dashboard, domains, and client tab pages
+
 ## [1.0.1] - 2026-03-16
 
 ### Fixed
