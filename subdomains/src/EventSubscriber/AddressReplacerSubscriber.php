@@ -68,7 +68,7 @@ class AddressReplacerSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Get user's active subdomains
+        // Get user's active subdomains with server info
         try {
             $subdomains = $this->entityManager->getRepository(Subdomain::class)
                 ->findBy(['userId' => $user->getId(), 'status' => Subdomain::STATUS_ACTIVE]);
@@ -80,30 +80,53 @@ class AddressReplacerSubscriber implements EventSubscriberInterface
             return;
         }
 
-        // Build server_id => address map
+        // Build maps: server_id => address AND pterodactyl_identifier => address
         $map = [];
+        $identifierMap = [];
         foreach ($subdomains as $sub) {
             $map[$sub->getServerId()] = $sub->getFullAddress();
+            // Also get the pterodactyl identifier for server detail page matching
+            try {
+                $server = $this->entityManager->getRepository(\App\Core\Entity\Server::class)
+                    ->find($sub->getServerId());
+                if ($server) {
+                    $identifierMap[$server->getPterodactylServerIdentifier()] = $sub->getFullAddress();
+                }
+            } catch (\Exception $e) {
+                // Skip if server not found
+            }
         }
 
         $jsonMap = json_encode($map, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
+        $jsonIdMap = json_encode($identifierMap, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT);
 
+        // m = {db_server_id: address}, im = {pterodactyl_identifier: address}
         $script = <<<JS
 <script data-subdomain-replacer>
 (function(){
-var m=$jsonMap;
-function r(){document.querySelectorAll('[data-ip]').forEach(function(e){
+var m=$jsonMap,im=$jsonIdMap;
+function r(){
+// 1. Dashboard & server list: elements inside [data-server-id] containers
+document.querySelectorAll('[data-server-id]').forEach(function(card){
+var sid=card.getAttribute('data-server-id');
+if(!m[sid])return;
+var ipEl=card.querySelector('[data-ip]');
+if(!ipEl||ipEl.getAttribute('data-sub-replaced'))return;
+var t=ipEl.textContent.trim();
+if(!t||ipEl.classList.contains('placeholder'))return;
+ipEl.textContent=m[sid];ipEl.setAttribute('data-sub-replaced','1');
+});
+// 2. Server detail page: match by pterodactyl identifier in URL
+var p=new URLSearchParams(window.location.search);
+if(p.get('routeName')==='server'&&p.get('id')){
+var pid=p.get('id');
+if(im[pid]){
+document.querySelectorAll('[data-ip]').forEach(function(e){
 if(e.getAttribute('data-sub-replaced'))return;
 var t=e.textContent.trim();
 if(!t||e.classList.contains('placeholder'))return;
-var ip=t.split(':')[0];
-for(var sid in m){
-var found=false;
-var card=e.closest('[data-server-id]');
-if(card&&card.getAttribute('data-server-id')==sid){found=true;}
-if(!found){var row=e.closest('tr,div,.card,[class*=server]');
-if(row&&row.textContent.indexOf(ip)>-1){found=true;}}
-if(found){e.textContent=m[sid];e.setAttribute('data-sub-replaced','1');break;}}});}
+e.textContent=im[pid];e.setAttribute('data-sub-replaced','1');
+});}}}
 var o=new MutationObserver(function(){setTimeout(r,200);});
 o.observe(document.querySelector('main')||document.body,{childList:true,subtree:true,characterData:true});
 setTimeout(r,500);setTimeout(r,2000);setTimeout(r,5000);
