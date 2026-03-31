@@ -43,14 +43,10 @@ services:
 
     # CRUD Controllers (ALL must be registered for EasyAdmin menu linkToCrud to work)
     Plugins\Subdomains\Controller\Admin\SubdomainCrudController:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
         public: true
 
     Plugins\Subdomains\Controller\Admin\DomainCrudController:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
         public: true
 
