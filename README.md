@@ -64,6 +64,50 @@ php bin/console cache:clear
 3. Click **Test Connection** to verify
 4. Optionally load the default blacklist from **Admin > Subdomains > Dashboard > Quick Actions**
 
+### Updating
+
+To update to a new version **without losing settings or data**:
+
+```bash
+cd /var/www/pteroca
+
+# 1. Disable the plugin
+php bin/console pteroca:plugin:disable subdomains
+
+# 2. Remove old files only (keeps DB data + settings intact)
+rm -rf plugins/subdomains/
+
+# 3. Upload the new ZIP via Admin > Plugins > Upload Plugin
+#    OR manually copy new files:
+#    cp -r /path/to/new/subdomains/ plugins/subdomains/
+#    chown -R www-data:www-data plugins/subdomains/
+
+# 4. Enable the plugin
+php bin/console pteroca:plugin:enable subdomains
+php bin/console cache:clear
+```
+
+> **Important:** Do NOT delete the `plugin` database record or settings — this will erase your Cloudflare API token and domain configuration. Only delete plugin **files**, not DB entries.
+
+### Troubleshooting: VichUploader Permission Error
+
+If you see `"The directory .../vich_uploader is not writable"` when uploading plugins, fix it by editing your VichUploader config:
+
+```bash
+# Edit config/packages/vich_uploader.yaml:
+vich_uploader:
+    db_driver: orm
+    metadata:
+        cache: file
+        file_cache:
+            dir: '%kernel.project_dir%/var/vich_uploader'
+
+# Then:
+mkdir -p /var/www/pteroca/var/vich_uploader
+chown -R www-data:www-data /var/www/pteroca/var/
+php bin/console cache:clear
+```
+
 ---
 
 ## How It Works
