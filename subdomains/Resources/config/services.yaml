@@ -81,6 +81,7 @@ services:
         arguments:
             $entityManager: '@doctrine.orm.entity_manager'
             $tokenStorage: '@security.token_storage'
+            $connection: '@doctrine.dbal.default_connection'
         public: true
 
     # Twig Extension (provides subdomain data to templates)

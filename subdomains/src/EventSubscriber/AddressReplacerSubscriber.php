@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Plugins\Subdomains\EventSubscriber;
 
+use Doctrine\DBAL\Connection;
 use Doctrine\ORM\EntityManagerInterface;
 use Plugins\Subdomains\Entity\Subdomain;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
@@ -14,12 +15,16 @@ use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInt
 /**
  * Injects a small inline JS into HTML responses to replace server IPs
  * with subdomain addresses across all panel pages.
+ * Also auto-syncs plugin version from plugin.json to DB on first request.
  */
 class AddressReplacerSubscriber implements EventSubscriberInterface
 {
+    private static bool $versionSynced = false;
+
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
         private readonly TokenStorageInterface $tokenStorage,
+        private readonly Connection $connection,
     ) {
     }
 
@@ -34,6 +39,12 @@ class AddressReplacerSubscriber implements EventSubscriberInterface
     {
         if (!$event->isMainRequest()) {
             return;
+        }
+
+        // Auto-sync version once per process
+        if (!self::$versionSynced) {
+            self::$versionSynced = true;
+            $this->syncVersion();
         }
 
         $request = $event->getRequest();
@@ -136,5 +147,39 @@ JS;
 
         $content = str_replace('</body>', $script . '</body>', $content);
         $response->setContent($content);
+    }
+
+    /**
+     * Sync plugin version from plugin.json to the database.
+     * Runs once per process on the first request.
+     */
+    private function syncVersion(): void
+    {
+        try {
+            $pluginJsonPath = dirname(__DIR__, 2) . '/plugin.json';
+            if (!file_exists($pluginJsonPath)) {
+                return;
+            }
+
+            $manifest = json_decode(file_get_contents($pluginJsonPath), true);
+            $fileVersion = $manifest['version'] ?? null;
+            if (!$fileVersion) {
+                return;
+            }
+
+            $dbVersion = $this->connection->fetchOne(
+                'SELECT version FROM plugin WHERE name = ?',
+                ['subdomains']
+            );
+
+            if ($dbVersion !== false && $dbVersion !== $fileVersion) {
+                $this->connection->executeStatement(
+                    'UPDATE plugin SET version = ?, state = ? WHERE name = ?',
+                    [$fileVersion, 'enabled', 'subdomains']
+                );
+            }
+        } catch (\Exception $e) {
+            // Silently fail — version sync is not critical
+        }
     }
 }
