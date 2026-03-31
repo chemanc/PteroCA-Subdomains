@@ -24,7 +24,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
  * Client controller for subdomain management (per server).
  */
 #[Route(name: 'plugin_subdomains_')]
-#[IsGranted('IS_AUTHENTICATED_FULLY')]
+#[IsGranted('IS_AUTHENTICATED_REMEMBERED')]
 class SubdomainController extends AbstractController
 {
     public function __construct(
