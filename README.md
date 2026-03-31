@@ -80,14 +80,12 @@ rm -rf plugins/subdomains/
 cp -r /path/to/new/subdomains/ plugins/subdomains/
 chown -R www-data:www-data plugins/subdomains/
 
-# 3. Re-enable
-php bin/console pteroca:plugin:disable subdomains
-php bin/console pteroca:plugin:enable subdomains
+# 3. Rebuild cache
 php bin/console cache:clear
 chown -R www-data:www-data var/
 ```
 
-The plugin automatically syncs its version from `plugin.json` to the database on every boot — no manual SQL needed.
+The plugin automatically syncs its version from `plugin.json` to the database on the first page load — no manual SQL or disable/enable cycle needed. All settings, domains, subdomains, and your Cloudflare API token are preserved.
 
 > **Warning:** Do NOT run `DELETE FROM plugin WHERE name = 'subdomains'` — this erases your Cloudflare API token and all plugin settings. Only delete plugin **files**, never the DB record.
 
