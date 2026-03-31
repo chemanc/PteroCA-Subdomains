@@ -25,17 +25,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class SubdomainCrudController extends AbstractPanelController
 {
-    private EntityManagerInterface $entityManager;
-
-    public function __construct(
-        PanelCrudService $panelCrudService,
-        RequestStack $requestStack,
-        EntityManagerInterface $entityManager
-    ) {
-        parent::__construct($panelCrudService, $requestStack);
-        $this->entityManager = $entityManager;
-    }
-
     public static function getEntityFqcn(): string
     {
         return Subdomain::class;
@@ -73,13 +62,21 @@ class SubdomainCrudController extends AbstractPanelController
      */
     public function index(AdminContext $context)
     {
-        $subRepo = $this->entityManager->getRepository(Subdomain::class);
-        $domainRepo = $this->entityManager->getRepository(SubdomainDomain::class);
+        $em = $this->container->get('doctrine.orm.entity_manager');
+        $subRepo = $em->getRepository(Subdomain::class);
+        $domainRepo = $em->getRepository(SubdomainDomain::class);
 
         return $this->render('@PluginSubdomains/admin/dashboard.html.twig', [
             'stats' => $subRepo->getStats(),
             'recentSubdomains' => $subRepo->findRecent(10),
             'domains' => $domainRepo->findAll(),
+        ]);
+    }
+
+    public static function getSubscribedServices(): array
+    {
+        return array_merge(parent::getSubscribedServices(), [
+            'doctrine.orm.entity_manager' => '?' . EntityManagerInterface::class,
         ]);
     }
 }

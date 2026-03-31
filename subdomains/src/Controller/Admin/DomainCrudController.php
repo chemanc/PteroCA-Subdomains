@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Plugins\Subdomains\Controller\Admin;
 
 use App\Core\Controller\Panel\AbstractPanelController;
-use App\Core\Service\Crud\PanelCrudService;
 use Doctrine\ORM\EntityManagerInterface;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Action;
 use EasyCorp\Bundle\EasyAdminBundle\Config\Actions;
@@ -15,7 +14,6 @@ use EasyCorp\Bundle\EasyAdminBundle\Field\BooleanField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\IdField;
 use EasyCorp\Bundle\EasyAdminBundle\Field\TextField;
 use Plugins\Subdomains\Entity\SubdomainDomain;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
@@ -24,17 +22,6 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class DomainCrudController extends AbstractPanelController
 {
-    private EntityManagerInterface $entityManager;
-
-    public function __construct(
-        PanelCrudService $panelCrudService,
-        RequestStack $requestStack,
-        EntityManagerInterface $entityManager
-    ) {
-        parent::__construct($panelCrudService, $requestStack);
-        $this->entityManager = $entityManager;
-    }
-
     public static function getEntityFqcn(): string
     {
         return SubdomainDomain::class;
@@ -73,10 +60,18 @@ class DomainCrudController extends AbstractPanelController
      */
     public function index(AdminContext $context)
     {
-        $domainRepo = $this->entityManager->getRepository(SubdomainDomain::class);
+        $em = $this->container->get('doctrine.orm.entity_manager');
+        $domainRepo = $em->getRepository(SubdomainDomain::class);
 
         return $this->render('@PluginSubdomains/admin/domains.html.twig', [
             'domains' => $domainRepo->findBy([], ['isDefault' => 'DESC', 'domain' => 'ASC']),
+        ]);
+    }
+
+    public static function getSubscribedServices(): array
+    {
+        return array_merge(parent::getSubscribedServices(), [
+            'doctrine.orm.entity_manager' => '?' . EntityManagerInterface::class,
         ]);
     }
 }
