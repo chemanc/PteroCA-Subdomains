@@ -66,28 +66,27 @@ php bin/console cache:clear
 
 ### Updating
 
-To update to a new version **without losing settings or data**:
+To update to a new version **without losing settings, domains, subdomains, or your Cloudflare API token**:
 
 ```bash
 cd /var/www/pteroca
 
-# 1. Disable the plugin
-php bin/console pteroca:plugin:disable subdomains
-
-# 2. Remove old files only (keeps DB data + settings intact)
+# 1. Replace plugin files (DB records stay intact)
 rm -rf plugins/subdomains/
+# Copy new version files (from git clone, unzip, etc.):
+cp -r /path/to/new/subdomains/ plugins/subdomains/
+chown -R www-data:www-data plugins/subdomains/
 
-# 3. Upload the new ZIP via Admin > Plugins > Upload Plugin
-#    OR manually copy new files:
-#    cp -r /path/to/new/subdomains/ plugins/subdomains/
-#    chown -R www-data:www-data plugins/subdomains/
-
-# 4. Enable the plugin
-php bin/console pteroca:plugin:enable subdomains
+# 2. Scan for version change — PteroCA detects the update automatically
+php bin/console pteroca:plugin:scan
 php bin/console cache:clear
 ```
 
-> **Important:** Do NOT delete the `plugin` database record or settings — this will erase your Cloudflare API token and domain configuration. Only delete plugin **files**, not DB entries.
+PteroCA will detect the new version and set the plugin state to **"Update Pending"**. Go to **Admin > Plugins** and enable it from there.
+
+> **Warning:** Do NOT run `DELETE FROM plugin WHERE name = 'subdomains'` — this erases your Cloudflare API token and all plugin settings. Only delete plugin **files**, never the DB record. The `plugin:scan` command handles version updates automatically.
+
+> **Note:** PteroCA's "Upload Plugin" button does NOT support overwriting an existing plugin. Always replace files manually and use `plugin:scan` for updates.
 
 ### Troubleshooting: VichUploader Permission Error
 
