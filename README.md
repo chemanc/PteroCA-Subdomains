@@ -71,22 +71,28 @@ To update to a new version **without losing settings, domains, subdomains, or yo
 ```bash
 cd /var/www/pteroca
 
-# 1. Replace plugin files (DB records stay intact)
+# 1. Clear cache first (prevents 500 errors from missing classes)
+rm -rf var/cache/prod/
+
+# 2. Replace plugin files
 rm -rf plugins/subdomains/
-# Copy new version files (from git clone, unzip, etc.):
+# Copy new version (unzip, scp, etc.):
 cp -r /path/to/new/subdomains/ plugins/subdomains/
 chown -R www-data:www-data plugins/subdomains/
 
-# 2. Scan for version change — PteroCA detects the update automatically
-php bin/console pteroca:plugin:scan
+# 3. Re-enable and sync version
+php bin/console pteroca:plugin:disable subdomains
+php bin/console pteroca:plugin:enable subdomains
+# PteroCA doesn't auto-update the version field, so sync it manually:
+NEW_VERSION=$(php -r "echo json_decode(file_get_contents('plugins/subdomains/plugin.json'))->version;")
+php bin/console dbal:run-sql "UPDATE plugin SET version = '$NEW_VERSION' WHERE name = 'subdomains'"
 php bin/console cache:clear
+chown -R www-data:www-data var/
 ```
 
-PteroCA will detect the new version and set the plugin state to **"Update Pending"**. Go to **Admin > Plugins** and enable it from there.
+> **Warning:** Do NOT run `DELETE FROM plugin WHERE name = 'subdomains'` — this erases your Cloudflare API token and all plugin settings. Only delete plugin **files**, never the DB record.
 
-> **Warning:** Do NOT run `DELETE FROM plugin WHERE name = 'subdomains'` — this erases your Cloudflare API token and all plugin settings. Only delete plugin **files**, never the DB record. The `plugin:scan` command handles version updates automatically.
-
-> **Note:** PteroCA's "Upload Plugin" button does NOT support overwriting an existing plugin. Always replace files manually and use `plugin:scan` for updates.
+> **Note:** PteroCA's "Upload Plugin" button does NOT support overwriting an existing plugin. Always replace files manually for updates.
 
 ### Troubleshooting: VichUploader Permission Error
 
