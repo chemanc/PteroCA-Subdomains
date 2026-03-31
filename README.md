@@ -80,15 +80,14 @@ rm -rf plugins/subdomains/
 cp -r /path/to/new/subdomains/ plugins/subdomains/
 chown -R www-data:www-data plugins/subdomains/
 
-# 3. Re-enable and sync version
+# 3. Re-enable
 php bin/console pteroca:plugin:disable subdomains
 php bin/console pteroca:plugin:enable subdomains
-# PteroCA doesn't auto-update the version field, so sync it manually:
-NEW_VERSION=$(php -r "echo json_decode(file_get_contents('plugins/subdomains/plugin.json'))->version;")
-php bin/console dbal:run-sql "UPDATE plugin SET version = '$NEW_VERSION' WHERE name = 'subdomains'"
 php bin/console cache:clear
 chown -R www-data:www-data var/
 ```
+
+The plugin automatically syncs its version from `plugin.json` to the database on every boot — no manual SQL needed.
 
 > **Warning:** Do NOT run `DELETE FROM plugin WHERE name = 'subdomains'` — this erases your Cloudflare API token and all plugin settings. Only delete plugin **files**, never the DB record.
 
