@@ -32,7 +32,32 @@ services:
         tags: ['doctrine.repository_service']
         public: true
 
-    # CRUD Controllers
+    # Client Controller
+    Plugins\Subdomains\Controller\SubdomainController:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+        public: true
+
+    # CRUD Controllers (ALL must be registered for EasyAdmin menu linkToCrud to work)
+    Plugins\Subdomains\Controller\Admin\SubdomainCrudController:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+        public: true
+
+    Plugins\Subdomains\Controller\Admin\DomainCrudController:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+        public: true
+
+    Plugins\Subdomains\Controller\Admin\SubdomainApiController:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+        public: true
+
     Plugins\Subdomains\Controller\Admin\BlacklistCrudController:
         tags: ['controller.service_arguments']
         public: true
@@ -46,13 +71,20 @@ services:
         public: true
 
     Plugins\Subdomains\EventSubscriber\ServerEventSubscriber:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
         public: true
 
     Plugins\Subdomains\EventSubscriber\AddressReplacerSubscriber:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+            $tokenStorage: '@security.token_storage'
         public: true
 
     # Twig Extension (provides subdomain data to templates)
     Plugins\Subdomains\Twig\SubdomainExtension:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
         tags: ['twig.extension']
         public: true
 
