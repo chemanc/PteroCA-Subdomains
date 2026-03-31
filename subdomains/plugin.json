@@ -1,7 +1,7 @@
 {
     "name": "subdomains",
     "display_name": "Subdomain Manager",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "author": "XMA Corporation",
     "description": "Custom subdomain management for game servers via Cloudflare DNS API. Creates A + SRV records for Minecraft servers, allowing players to connect using memorable addresses like myserver.yourdomain.com.",
     "license": "MIT",

@@ -5,6 +5,8 @@ services:
 
     # Bootstrap
     Plugins\Subdomains\Bootstrap:
+        arguments:
+            $connection: '@doctrine.dbal.default_connection'
         public: true
 
     # Services
