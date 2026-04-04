@@ -6,15 +6,15 @@ namespace Plugins\Subdomains\EventSubscriber;
 
 use App\Core\Event\Menu\MenuItemsCollectedEvent;
 use EasyCorp\Bundle\EasyAdminBundle\Config\MenuItem;
-use Plugins\Subdomains\Entity\Subdomain;
-use Plugins\Subdomains\Entity\SubdomainBlacklist;
-use Plugins\Subdomains\Entity\SubdomainDomain;
-use Plugins\Subdomains\Entity\SubdomainLog;
 use Symfony\Component\EventDispatcher\EventSubscriberInterface;
 
 /**
  * Adds Subdomain menu items to the PteroCA admin navigation.
  * Items appear in the ADMINISTRACIÓN section as a collapsible submenu.
+ *
+ * Uses linkToUrl() instead of linkToCrud() to avoid EasyAdmin's
+ * controller resolution during cache compilation, which fails because
+ * plugin controllers are registered at runtime, not compile time.
  */
 class MenuEventSubscriber implements EventSubscriberInterface
 {
@@ -29,12 +29,27 @@ class MenuEventSubscriber implements EventSubscriberInterface
     {
         $menuItems = $event->getMenuItems();
 
-        // Add as collapsible submenu in admin section (only visible to admins)
         $menuItems['admin'][] = MenuItem::subMenu('Subdomains', 'fas fa-globe')->setSubItems([
-            MenuItem::linkToCrud('Dashboard', 'fas fa-chart-bar', Subdomain::class),
-            MenuItem::linkToCrud('DNS Domains', 'fas fa-server', SubdomainDomain::class),
-            MenuItem::linkToCrud('Blacklist', 'fas fa-ban', SubdomainBlacklist::class),
-            MenuItem::linkToCrud('Logs', 'fas fa-history', SubdomainLog::class),
+            MenuItem::linkToUrl(
+                'Dashboard',
+                'fas fa-chart-bar',
+                '/panel?crudAction=index&crudControllerFqcn=' . urlencode('Plugins\\Subdomains\\Controller\\Admin\\SubdomainCrudController')
+            ),
+            MenuItem::linkToUrl(
+                'DNS Domains',
+                'fas fa-server',
+                '/panel?crudAction=index&crudControllerFqcn=' . urlencode('Plugins\\Subdomains\\Controller\\Admin\\DomainCrudController')
+            ),
+            MenuItem::linkToUrl(
+                'Blacklist',
+                'fas fa-ban',
+                '/panel?crudAction=index&crudControllerFqcn=' . urlencode('Plugins\\Subdomains\\Controller\\Admin\\BlacklistCrudController')
+            ),
+            MenuItem::linkToUrl(
+                'Logs',
+                'fas fa-history',
+                '/panel?crudAction=index&crudControllerFqcn=' . urlencode('Plugins\\Subdomains\\Controller\\Admin\\LogCrudController')
+            ),
         ]);
 
         $event->setMenuItems($menuItems);
